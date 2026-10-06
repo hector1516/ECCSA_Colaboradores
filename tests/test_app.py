@@ -311,21 +311,31 @@ class TestRutas(unittest.TestCase):
         """
         import base64
         import io
+        import random
 
         from PIL import Image
-        grande = io.BytesIO()
-        Image.new("RGB", (900, 1200), (255, 107, 0)).save(grande, format="JPEG",
-                                                          quality=95)
-        original = grande.getvalue()
+        # Foto CON RUIDO, no un color plano: un color uniforme se comprime a casi
+        # nada y el test compararía 500 KB contra 200 bytes, que no prueba nada.
+        rnd = random.Random(7)
+        grande = Image.new("RGB", (900, 1200))
+        grande.putdata([(rnd.randrange(256), rnd.randrange(256),
+                         rnd.randrange(256)) for _ in range(900 * 1200)])
+        buf = io.BytesIO()
+        grande.save(buf, format="JPEG", quality=95)
+        original = buf.getvalue()
 
         original_fn = server.tokens.foto_bytes
         server.tokens.foto_bytes = lambda uid: (original, "image/jpeg")
         try:
             reducido, tipo = server.tokens.foto_thumbnail(99)
             self.assertEqual(tipo, "image/jpeg")
-            self.assertLess(len(reducido) * 8, len(original))
+            # El ruido aleatorio es el PEOR caso para JPEG (no comprime nada),
+            # así que 4x es holgado a propósito. Lo que de verdad se comprueba es
+            # que la ficha NUNCA mande la original de ~1 MB: el avatar real pesa
+            # 35-48 KB contra los 450-550 KB de la original.
+            self.assertLess(len(reducido) * 4, len(original),
+                            f"mini {len(reducido)}b vs original {len(original)}b")
             salida = Image.open(io.BytesIO(base64.b64decode(reducido)))
-            # Cuadrada (recorte al centro) y no mayor que el tope.
             self.assertEqual(salida.width, salida.height)
             self.assertLessEqual(max(salida.size), server.tokens.LADO_AVATAR)
         finally:
@@ -335,12 +345,18 @@ class TestRutas(unittest.TestCase):
         """Un PNG transparente a JPEG se vuelve negro si no se compone antes."""
         import base64
         import io
+        import random
 
         from PIL import Image
-        transparente = io.BytesIO()
-        Image.new("RGBA", (900, 900), (255, 107, 0, 0)).save(transparente,
-                                                            format="PNG")
-        original = transparente.getvalue()
+        rnd = random.Random(11)
+        # Con ruido también: igual que arriba, un color plano no pesa nada.
+        plano = Image.new("RGBA", (900, 900))
+        plano.putdata([(255, 107, 0, rnd.randrange(256))
+                       for _ in range(900 * 900)])
+        buf = io.BytesIO()
+        plano.save(buf, format="PNG")
+        original = buf.getvalue()
+        assert len(original) > 10000, "la foto de prueba debe pesar algo"
         original_fn = server.tokens.foto_bytes
         server.tokens.foto_bytes = lambda uid: (original, "image/png")
         try:
@@ -417,6 +433,43 @@ class TestRutas(unittest.TestCase):
         if os.path.isfile(field):
             self.assertEqual(md5(campo), md5(field),
                              "el engrane dejó de ser el de Field")
+
+    def test_el_recorte_cae_sobre_la_cara(self):
+        """El recorte NO puede ir al centro: en una vertical eso es pecho y boca.
+
+        Regresión real: las fotos de `HUB_UsuariosFotos` son 896x1200 verticales
+        de celular. Recortando el cuadrado al centro, la franja salía del 37% al
+        63% de la altura — la cara quedaba fuera y en la ficha se veía "solo la
+        boca". Con el centro al 42% entra la cara completa.
+        """
+        from panel import tokens
+
+        ancho, alto = 896, 1200
+        lado = tokens.LADO_AVATAR
+        arriba = tokens._arriba_del_recorte(alto, lado)
+
+        # El recorte tiene que entrar en la imagen.
+        self.assertGreaterEqual(arriba, 0)
+        self.assertLessEqual(arriba + lado, alto)
+
+        # Y su centro tiene que caer en la franja de la cara, no en el pecho.
+        centro = (arriba + lado / 2) / alto
+        self.assertGreater(centro, 0.30, "el recorte subió de más: cortaría la frente")
+        self.assertLess(centro, 0.55, "el recorte bajó de más: saldría la boca/pecho")
+
+    def test_el_recaporte_no_sale_de_la_imagen(self):
+        """Con imágenes casi cuadradas el recorte tiene que ajustarse, no
+        desbordarse (Pillow recorta en silencio y devuelve negro)."""
+        from panel import tokens
+
+        for ancho, alto in ((900, 320), (900, 400), (900, 460), (900, 900),
+                            (896, 1200), (900, 2400)):
+            # El lado real es el menor de los tres: así el recorte nunca pide
+            # más pixeles de los que tiene la imagen.
+            lado = min(ancho, alto, tokens.LADO_AVATAR)
+            arriba = tokens._arriba_del_recorte(alto, lado)
+            self.assertGreaterEqual(arriba, 0, f"{ancho}x{alto}")
+            self.assertLessEqual(arriba + lado, alto, f"{ancho}x{alto}")
 
     def test_el_marco_de_la_foto_es_el_de_admon(self):
         """Contenedor circular con overflow:hidden y la foto dentro al 100%.

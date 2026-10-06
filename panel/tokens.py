@@ -273,12 +273,45 @@ def foto_bytes(id_usuario):
 #   · el vCard va dentro de un archivo que el móvil tiene que parsear entero:
 #     375 KB de foto en un contacto hace que iOS a veces tarde en abrirlo.
 #
-# Se recorta al centro a 320x320 y se guarda como JPEG. Q=82 y 320 px dan un
-# resultado indistinguible a tamaño de foto de contacto (~20 KB) con 25x menos
-# peso. 320 es el lado MÁXIMO: nunca se amplía una imagen más pequeña, porque
-# estirar una foto de 128 px a 320 solo añade bytes.
-LADO_AVATAR = 320
+# El lado del recorte. 460 px en vez de 320 porque el recorte va sesgado hacia
+# la cara (ver CENTRO_ROSTRO_VERTICAL): con 320 el encuadre salía con la frente
+# y los ojos pero cortando la barbilla, porque la cara ocupa más alto del que
+# entraba en un cuadrado de 320. 460 da la cara completa con aire.
+#
+# NO se amplía una imagen más pequeña: estirar una foto de 128 px a 460 solo
+# añade bytes y se ve borroso.
+LADO_AVATAR = 460
 CALIDAD_JPEG = 82
+
+
+# Dónde cae el CENTRO del recorte, en fracción de la altura.
+#
+# Calibrado a ojo contra las fotos reales (las 10 de `HUB_UsuariosFotos` son
+# 896x1200, todas verticales de celular):
+#
+#   recorte al centro (0.50) -> franja 37%-63% de la altura: PECHO Y BOCA. La
+#       cara queda fuera y la ficha mostraba "solo la boca".
+#   0.30 -> sube demasiado: frente y ojos bien, pero cuts la BARBILLA.
+#   0.42 -> la cara completa (frente, ojos, nariz, boca y barbilla) y el
+#       círculo la encuadra bien. Es el valor.
+#
+# Es un dato de las fotos de ESTA gente, no una regla universal: si algún día se
+# suben retratos ya encuadrados, se ajusta este número una vez y se acabó.
+CENTRO_ROSTRO_VERTICAL = 0.42
+
+
+def _arriba_del_recorte(alto, lado):
+    """Y del borde superior del recorte cuadrado, sesgado hacia arriba.
+
+    Verticales: el centro del recorte cae al 30% de la altura (donde está la
+    cara). El `max(0, …)` evita que en una imagen apenas más alta que el lado se
+    salga del borde, y el `min` evita pasarse del final.
+    """
+    if alto <= lado:
+        return 0
+    objetivo = int(alto * CENTRO_ROSTRO_VERTICAL)
+    arriba = objetivo - lado // 2
+    return max(0, min(arriba, alto - lado))
 
 
 def foto_thumbnail(id_usuario):
@@ -307,7 +340,7 @@ def foto_thumbnail(id_usuario):
         ancho, alto = img.size
         lado = min(ancho, alto, LADO_AVATAR)
         izquierda = (ancho - lado) // 2
-        arriba = (alto - lado) // 2
+        arriba = _arriba_del_recorte(alto, lado)
         img = img.crop((izquierda, arriba, izquierda + lado, arriba + lado))
         if img.mode not in ("RGB", "L"):
             # Un PNG con canal alfa a JPEG se vuelve negro si no se compone

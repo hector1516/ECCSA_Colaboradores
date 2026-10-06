@@ -6,6 +6,31 @@ Todos los cambios de esta app. Formato: qué cambió, en qué archivos y por qu�
 - `migrations/0057…` → migración de esquema (vive en el repo **HUB**)
 - `deploy/app.conf` → definición del contenedor en WebbApps
 
+## 0.3.3 — 2026-10-06
+
+### Fixed
+
+- **La ficha mostraba "solo la boca".** El recorte no era del CSS sino de la
+  miniatura que se genera en `panel/tokens.py`. Las fotos de
+  `HUB_UsuariosFotos` son todas 896x1200 **verticales de celular**, y recortar
+  el cuadrado al centro tomaba la franja del 37% al 63% de la altura: pecho y
+  boca. La cara quedaba fuera.
+
+  Calibrado contra las fotos reales: centro al 50% → boca; 0.30 → frente y
+  ojos pero cortando la barbilla; **0.42 → la cara completa**, que es el valor.
+  Y el lado del recorte pasa de 320 a 460 px, porque con 320 la cara no cabía
+  entera ni con el centro bien puesto.
+
+  `CENTRO_ROSTRO_VERTICAL` y `LADO_AVATAR` quedan documentados como el número
+  que hay que ajustar si algún día se suben retratos ya encuadrados.
+
+### Tests
+
+46 → 48. Los dos nuevos fijan que el recorte cae sobre la cara (entre 30% y 55%
+de la altura) y que nunca se sale de la imagen. También se corrigió el test de
+reducción, que comparaba contra una imagen de color plano —que se comprime a
+casi nada— y por eso medía una cosa que no era la real.
+
 ## 0.3.2 — 2026-10-06
 
 ### Fixed
