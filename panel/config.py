@@ -11,7 +11,7 @@ APP_ID = "colaboradores"
 APP_NAME = "Colaboradores"
 # Versión de la app. Fuente ÚNICA: el banner la lee de aquí y el CHANGELOG la
 # tiene que repetir — tools/check_changelog.py falla si no coinciden.
-APP_VERSION = "0.1.2"
+APP_VERSION = "0.2.0"
 
 # Puerto interno del contenedor. El host lo mapea en /opt/apps/colaboradores/app.conf.
 PORT = int(os.environ.get("PORT", "8000"))
@@ -42,6 +42,12 @@ DATA = get_data_dir()
 # no. Por eso NO se hardcodea aquí.
 SECRET_FILE = os.path.join(DATA, "admin_secret.txt")
 
+# Secreto de DERIVACIÓN de los tokens de las fichas. Va aparte del del panel a
+# propósito: rotar la contraseña del panel no debe invalidar las tarjetas NFC ya
+# impresas, que son plástico y no se reescriben. Y al revés: rotar este
+# invalida TODAS las tarjetas, porque el token sale de aquí.
+FICHA_SECRET_FILE = os.path.join(DATA, "ficha_secret.txt")
+
 
 def admin_secret():
     """Secreto del panel, o '' si no hay.
@@ -51,6 +57,19 @@ def admin_secret():
     """
     try:
         with open(SECRET_FILE, encoding="utf-8") as fh:
+            return fh.read().strip()
+    except OSError:
+        return ""
+
+
+def ficha_secreto():
+    """Secreto de derivación de los tokens, o '' si no existe.
+
+    Vacío significa que la app no puede generar ningún token. Es preferible a
+    arrancar con un secreto inventado: los tokens saldrían predecibles.
+    """
+    try:
+        with open(FICHA_SECRET_FILE, encoding="utf-8") as fh:
             return fh.read().strip()
     except OSError:
         return ""

@@ -1,38 +1,55 @@
 """
-panel/tokens.py — Emisión y revocación de las fichas (panel privado)
-===================================================================
-Este módulo es la ÚNICA parte de la app que escribe en la BD, y queda detrás
-del login del panel. La ficha pública (`GET /<slug>`) nunca llama a nada de
-aquí.
+panel/tokens.py — El token de la URL: derivado, no almacenado
+=============================================================
+El token de cada ficha se CALCULA a partir del Id del usuario y de un secreto
+que vive en el volumen del contenedor. No hay tabla de tokens: la única fuente
+de datos de personas es `HUB_Users`, y esta app solo la LEE.
+
+Por qué se deriva en vez de guardarse
+-------------------------------------
+Guardarlo exigiría una tabla (o columnas en `HUB_Users`) con un token por
+persona, y eso es una fuente de verdad más que puede desincronizarse del resto
+del ecosistema. Derivándolo:
+
+  · No puede quedar huérfano, duplicado ni apuntar a la persona equivocada:
+    sale del Id, y el Id no cambia.
+  · No hay que "emitir" nada. El enlace de todos existe siempre y es el mismo
+    para siempre, que es lo que necesita una tarjeta NFC ya grabada.
+  · `HUB_Users` queda intacta: esta app no escribe nada en ella.
+
+Lo que se pierde, y es un precio real
+-------------------------------------
+  · **No hay baja por persona.** Para dejar de servir una tarjeta hay que rotar
+    el secreto, lo que invalida las tarjetas de TODOS. Con una tabla se
+    revocaba una a una.
+  · **No hay contador de accesos.** No se sabe si una tarjeta está en uso.
+
+Lo que hay que revisar de vez en cuando
+---------------------------------------
+Si en un par de años esto se vuelve molesto (una tarjeta robada que hay que
+dar de baja sin tumbar las demás), la respuesta correcta es una tabla de solo
+revocación — sin el token, que sigue derivado — en vez de volver a guardar los
+tokens.
 
 El token
 --------
-32 caracteres de un alfabeto sin ambigüedad (Crockford: sin I, L, O, U, sin 0
-y 1, para que se pueda dictar por teléfono sin confusiones). 32 × log2(32) =
-160 bits: niEnumerando todo el espacio alcanzaría el link en la vida del
-universo.
+32 caracteres de un alfabeto sin ambigüedad (Crockford: sin I, L, O, U, sin 0 y
+1, para poder dictarlo por teléfono sin confusiones). 32 x 5 = 160 bits: ni
+enumerando todo el espacio alcanzaría el link en la vida del universo.
 
-El prefijo legible (`hector-pena-`) NO es seguridad, es ergonomía: el slug se
-graba en una tarjeta que alguien puede tener que volver a fabricar, y
-reconocer de un vistazo a qué persona pertenece vale más que los bits que
-aporte. Aunque alguien adivinara el nombre completo, los 32 caracteres
-aleatorios siguen siendo la barrera.
-
-Por qué el slug NO es hasheado
------------------------------
-Un token solo sirve si se puede buscar por igualdad, y para eso la BD tiene que
-compararlo: hasheado habría que regenerar el token en cada visita, y la tarjeta
-NFC física (que no se puede reescribir) dejaría de abrir. Se guarda en claro,
-igual que los tokens de sesión que ya viven en esta base.
+El prefijo legible (`hector-pena-`) NO es seguridad, es ergonomía: el slug va
+grabado en una tarjeta que puede haber que volver a fabricar, y reconocer de un
+vistazo a qué persona pertenece vale más que los bits que aporte. Aunque alguien
+adivinara el nombre completo, los 32 caracteres siguen siendo la barrera.
 
 Aleatoriedad
 ------------
-`secrets.token_bytes` (CSPRNG del sistema), NO `random`. Un token de acceso
-público generado con un PRNG no criptográfico se puede predecir a partir de
-algunos ejemplos: quien adivina un token puede predecir los siguientes. Aquí
-eso no es aceptable.
+`secrets` (CSPRNG) para el secreto, nunca `random`: un secreto con PRNG no
+criptográfico se predice a partir de unos ejemplos, y aquí el secreto es la raíz
+de todos los tokens.
 """
-import base64
+import hashlib
+import hmac
 import os
 import re
 import secrets
@@ -41,53 +58,77 @@ import unicodedata
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from panel import db  # noqa: E402
+from panel import config, db  # noqa: E402
 
 # Crockford Base32: sin I, L, O, U (letras que se confunden) ni 0, 1.
-# 32 símbolos × 32 caracteres = 160 bits de entropía.
 ALFABETO = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
 LARGO_TOKEN = 32
+BITS_POR_CARACTER = 5
+BYTES_DE_SEMILLA = (LARGO_TOKEN * BITS_POR_CARACTER) // 8      # 20 bytes
 
 PREFIJO_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 
+# Etiqueta de dominio dentro del mensaje HMAC. Si el mismo secreto se usara
+# para otra cosa, los tokens de las dos cosas serían idénticos.
+DOMINIO = b"ficha-nfc-v1:"
 
-def generar_token(largo=LARGO_TOKEN):
-    """Token aleatorio criptográfico, en mayúsculas."""
-    return "".join(secrets.choice(ALFABETO) for _ in range(largo))
+
+def generar_secreto():
+    """Secreto nuevo. Solo se usa al crear el archivo por primera vez."""
+    return secrets.token_urlsafe(48)
+
+
+def _clave():
+    """Secreto de derivación en bytes. b'' si todavía no se ha creado."""
+    secreto = config.ficha_secreto()
+    return secreto.encode("utf-8") if secreto else b""
+
+
+def token_de(id_usuario):
+    """Token de una persona. Determinista: el mismo Id, el mismo token, siempre.
+
+    Es HMAC-SHA256 del Id con el secreto, de los que se toman 20 bytes (160
+    bits) y se codifican en Base32. Es un PRF, no un hash: sin el secreto no se
+    puede calcular el token ni aunque se conozca el Id.
+    """
+    clave = _clave()
+    if not clave:
+        return ""
+    mac = hmac.new(clave, DOMINIO + str(int(id_usuario)).encode("ascii"),
+                   hashlib.sha256)
+    numero = int.from_bytes(mac.digest()[:BYTES_DE_SEMILLA], "big")
+    # Se leen los bits de MSB a LSB, de 5 en 5. El desplazamiento baja de 155
+    # a 0 porque el primer carácter usa los 5 bits más altos.
+    return "".join(
+        ALFABETO[(numero >> (BITS_POR_CARACTER * (LARGO_TOKEN - 1 - i))) & 31]
+        for i in range(LARGO_TOKEN)
+    )
 
 
 def slugify(nombre):
-    """'Hector Peña Ruiz' → 'hector-pena-ruiz'.
+    """'Hector Peña Ruiz' -> 'hector-pena-ruiz'.
 
-    Se quitan acentos y eñes ANTES de reemplazar: si no, 'Peña' se volvería
-    'pe a' y la tarjeta llevaría un hueco que nadie sabe reescribir a mano.
+    Los acentos y la eñe se traducen ANTES de filtrar. La forma obvia —
+    `encode("ascii", "ignore")`— borra la letra acentuada en vez de convertirla:
+    "ángel" salía "ngel" y "pérez" salía "prez", y perder la primera letra de un
+    apellido en una tarjeta que hay que reescribir a mano sí es un problema.
     """
-    texto = (nombre or "").lower()
-    # La eñe y la Ñ se traducen ANTES de quitar los acentos. NFKD +Encoding
-    # ASCII borra la letra entera en vez de convirtiéndola en n, y "Peña" quedaba
-    # "pea" — un slug irreconocible en una tarjeta que alguien tiene que volver
-    # a fabricar a mano.
-    texto = texto.replace("ñ", "n")
-    # Ahora los acentos: se descompone (NFKD) y se quitan SOLO los signos
-    # combinantes. La forma obvia —encode("ascii", "ignore")— BORRA la letra
-    # acentuada en vez de convertirla: "ángel" salía "ngel" y "pérez" salía
-    # "prez". Perder la primera letra de un apellido en una tarjeta que hay que
-    # reescribir a mano no es un detalle cosmético.
+    texto = (nombre or "").lower().replace("ñ", "n")
     texto = "".join(c for c in unicodedata.normalize("NFKD", texto)
                     if not unicodedata.combining(c))
-    texto = re.sub(r"[^a-z0-9]+", "-", texto)
-    return texto.strip("-") or "colaborador"
+    return re.sub(r"[^a-z0-9]+", "-", texto).strip("-") or "colaborador"
 
 
-def construir_slug(nombre):
-    """Slug completo: `hector-pena-<32 aleatorios>`."""
-    return f"{slugify(nombre)}-{generar_token()}"
+def construir_slug(nombre, id_usuario):
+    """Slug completo: `hector-pena-<32 derivados>`."""
+    token = token_de(id_usuario)
+    return f"{slugify(nombre)}-{token}" if token else ""
 
 
 def slug_valido(slug):
     """True si el slug tiene la forma `<prefijo>-<token>`.
 
-    El backend igual compara contra el índice único, así que esto NO es la
+    El backend igual compara contra el token derivado, así que esto NO es la
     seguridad: es para no gastar una ida a la BD con basura, y para no meter
     caracteres raros en los logs.
     """
@@ -102,34 +143,94 @@ def slug_valido(slug):
     return len(token) == LARGO_TOKEN and all(c in ALFABETO for c in token.upper())
 
 
+def persona_por_token(slug):
+    """La persona de un slug, o None.
+
+    Como el token es DERIVADO y no está guardado, no hay un WHERE que lo
+    encuentre: se calcula el token de cada usuario activo y se compara. Con 11
+    usuarios son 11 HMAC (microsegundos); con 500 serían 500, y aun así es más
+    barato que cualquier tabla extra.
+
+    Un ataque de fuerza bruta se paga aquí: cada intento calculates el token de
+    todos los usuarios, así que adivinar no gana nada por haber acertado antes.
+    """
+    if not slug_valido(slug):
+        return None
+    partes = slug.split("-")
+    prefijo, token = "-".join(partes[:-1]), partes[-1].upper()
+    for persona in listar_personas(solo_activas=True):
+        esperado = construir_slug(persona.get("Nombre"), persona["Id"])
+        if not esperado:
+            continue
+        p_esperado, t_esperado = esperado.rsplit("-", 1)
+        # Se comparan las dos mitades por separado: el prefijo legible va en
+        # claro a propósito, así que solo el token lleva la comparacion
+        # constante.
+        if p_esperado == prefijo and hmac.compare_digest(t_esperado, token):
+            persona["Slug"] = esperado
+            persona["Foto"], persona["FotoTipo"] = foto_thumbnail(persona["Id"])
+            return persona
+    return None
+
+
+def coincide(prefijo_slug, token_recibido, id_usuario):
+    """True si el token recibido es el DERIVADO de esa persona.
+
+    `hmac.compare_digest` y no `==`: con `==` el tiempo de respuesta depende de
+    cuántos caracteres correctos lleva, y eso filtra el token byte a byte.
+    """
+    esperado = token_de(id_usuario)
+    if not esperado or not token_recibido:
+        return False
+    return hmac.compare_digest(esperado, str(token_recibido).upper())
+
+
 # ─────────────────────────────────────────────────────────────────────────────
-# Escrituras (solo desde el panel autenticado)
+# Lectura de personas (ÚNICA fuente: HUB_Users + HUB_UsuariosFotos + MAC)
 # ─────────────────────────────────────────────────────────────────────────────
-USUARIOS_SQL = """
-SELECT u.Id, u.Nombre, u.Email, u.Activo, u.Puesto, u.Foto,
-       f.Id AS FichaId, f.Slug, f.Etiqueta, f.Activo AS FichaActivo,
-       f.Creado, f.NumAccesos, f.UltimoAcceso
+# `HUB_Users` solo se LEE. La foto sale de `HUB_UsuariosFotos.Archivo`, que es
+# donde el usuario la sube desde Admon (10 de 11 personas).
+#
+# Se hace un solo SELECT de usuarios y la foto va en OTRA consulta, porque son
+# 450-550 KB por persona: traerlas todas junto con el listado multiplicaría por
+# 5 MB una respuesta que el panel carga entera. La foto se pide SOLO cuando se
+# abre una ficha.
+PERSONAS_SQL = """
+SELECT u.Id, u.Nombre, u.Email, u.Activo, u.Puesto, u.Nickname
 FROM   dbo.HUB_Users u
-LEFT   JOIN dbo.HUB_ColaboradorFicha f ON f.IdUsuario = u.Id
 ORDER  BY u.Nombre
 """
 
+# La foto REAL la sube el usuario desde Admon (app AdmonApp). Vive en
+# `HUB_UsuariosFotos.Archivo` como VARBINARY, en tabla aparte a propósito: esa
+# tabla se creó (migración 0045 de AdmonApp) justamente para que otra app la
+# pidiera sola por IdUsuario sin que HUB_Users arrastre binarios en cada login.
+#
+# NO se usa `HUB_UserAvatars`: son avatares generados por IA, no la foto de la
+# persona, y es justo lo que se quiere mostrar en una tarjeta de presentación.
+FOTO_SQL = """
+SELECT f.Archivo, f.ContentType
+FROM   dbo.HUB_UsuariosFotos f
+WHERE  f.IdUsuario = %s
+"""
 
-def listar_usuarios():
-    """Todos los usuarios con su ficha (o None si aún no tienen).
 
-    Trae también los inactivos a propósito: es la forma de que el panel muestre
-    a quién hay que dar de baja, y de no confesar que un token existe cuando la
-    persona ya no trabaja aquí.
-    """
+def listar_personas(solo_activas=False):
+    """Personas con su token derivado. Lista para el panel."""
+    filas = []
     conn = None
     try:
         conn = db.get_connection()
         cur = conn.cursor(as_dict=True)
-        cur.execute(USUARIOS_SQL)
-        return cur.fetchall()
+        cur.execute(PERSONAS_SQL)
+        for f in cur.fetchall() or []:
+            if solo_activas and not f.get("Activo"):
+                continue
+            f = dict(f)
+            f["Slug"] = construir_slug(f.get("Nombre"), f["Id"])
+            filas.append(f)
     except Exception as exc:
-        print(f"[tokens] error listando usuarios: {exc}", file=sys.stderr)
+        print(f"[tokens] error listando personas: {exc}", file=sys.stderr)
         return []
     finally:
         if conn is not None:
@@ -137,269 +238,90 @@ def listar_usuarios():
                 conn.close()
             except Exception:
                 pass
+    return filas
 
 
-def emitir(id_usuario, etiqueta=None):
-    """Crea (o devuelve) la ficha de un usuario. Devuelve (slug, nuevo).
+def foto_bytes(id_usuario):
+    """Foto real de la persona: (bytes, content_type). (b'', '') si no tiene.
 
-    `nuevo=False` significa que la persona ya tenía token: NO se genera otro,
-    porque la tarjeta NFC física ya está grabada con el viejo y un token nuevo
-    dejaría esa tarjeta muerta sin avisar. Para rotar el token hay que usar
-    `revocar()` primero, y eso SÍ inutiliza la tarjeta vieja a propósito.
+    Sale de `HUB_UsuariosFotos`, que es donde el usuario la sube desde Admon.
+    Se devuelve el BINARIO pelado y no base64 a propósito: la columna es
+    VARBINARY justamente para no pagar el 33% extra del base64, y la conversión
+    se hace una sola vez, ya reducida, al pintar.
     """
-    conn = None
     try:
         conn = db.get_connection()
-        cur = conn.cursor(as_dict=True)
-
-        cur.execute("SELECT Nombre FROM dbo.HUB_Users WHERE Id = %s", (id_usuario,))
+        cur = conn.cursor()
+        cur.execute(FOTO_SQL, (id_usuario,))
         fila = cur.fetchone()
-        if not fila:
-            return None, False
-        nombre = fila["Nombre"]
-
-        cur.execute(
-            "SELECT Slug FROM dbo.HUB_ColaboradorFicha WHERE IdUsuario = %s",
-            (id_usuario,),
-        )
-        existente = cur.fetchone()
-        if existente:
-            return existente["Slug"], False
-
-        slug = construir_slug(nombre)
-        cur.execute(
-            "INSERT INTO dbo.HUB_ColaboradorFicha (IdUsuario, Slug, Etiqueta, Activo) "
-            "VALUES (%s, %s, %s, 1)",
-            (id_usuario, slug, etiqueta or nombre),
-        )
-        conn.commit()
-        return slug, True
+        conn.close()
+        if fila and fila[0]:
+            return bytes(fila[0]), (fila[1] or "image/jpeg")
     except Exception as exc:
-        print(f"[tokens] error emitiendo ficha: {exc}", file=sys.stderr)
-        return None, False
-    finally:
-        if conn is not None:
-            try:
-                conn.close()
-            except Exception:
-                pass
+        print(f"[tokens] error leyendo la foto: {exc}", file=sys.stderr)
+    return b"", ""
 
 
-def revocar(id_usuario):
-    """Desactiva la ficha. NO borra la fila: conserva el historial de accesos.
-
-    Es la diferencia entre "esta tarjeta ya no sirve" y "esta tarjeta nunca
-    existió". Con la ficha dada de baja, `GET /<slug>` responde 404 igual que
-    un token inventado, así que no se puede usar para probar Tokens.
-    """
-    conn = None
-    try:
-        conn = db.get_connection()
-        cur = conn.cursor()
-        cur.execute(
-            "UPDATE dbo.HUB_ColaboradorFicha SET Activo = 0 WHERE IdUsuario = %s",
-            (id_usuario,),
-        )
-        cambiados = cur.rowcount
-        conn.commit()
-        return cambiados > 0
-    except Exception as exc:
-        print(f"[tokens] error revocando ficha: {exc}", file=sys.stderr)
-        return False
-    finally:
-        if conn is not None:
-            try:
-                conn.close()
-            except Exception:
-                pass
-
-
-def reactivar(id_usuario):
-    """Vuelve a activar una ficha revocada (mismo token: la tarjeta sirve)."""
-    conn = None
-    try:
-        conn = db.get_connection()
-        cur = conn.cursor()
-        cur.execute(
-            "UPDATE dbo.HUB_ColaboradorFicha SET Activo = 1 WHERE IdUsuario = %s",
-            (id_usuario,),
-        )
-        cambiados = cur.rowcount
-        conn.commit()
-        return cambiados > 0
-    except Exception as exc:
-        print(f"[tokens] error reactivando ficha: {exc}", file=sys.stderr)
-        return False
-    finally:
-        if conn is not None:
-            try:
-                conn.close()
-            except Exception:
-                pass
-
-
-# ─── Datos de la empresa (edición desde el panel) ────────────────────────────
-EMPRESA_TIPO = {
-    "colab_empresa_nombre": "text",
-    "colab_empresa_direccion": "text",
-    "colab_empresa_telefono": "text",
-    "colab_empresa_whatsapp": "text",
-    "colab_empresa_facebook": "text",
-    "colab_empresa_instagram": "text",
-    "colab_empresa_latitud": "number",
-    "colab_empresa_longitud": "number",
-}
-
-
-def guardar_empresa(valores):
-    """Guarda las 8 claves de empresa. Solo las claves conocidas.
-
-    La lista de claves está en el código (EMPRESA_TIPO), no viene del request:
-    un endpoint que acepta el nombre de la clave permite escribir cualquier fila
-    de HUB_Config, y esa tabla guarda tokens de Telegram y passwords de SMB.
-    """
-    permitidas = {k: v for k, v in (valores or {}).items() if k in EMPRESA_TIPO}
-    if not permitidas:
-        return False
-    conn = None
-    try:
-        conn = db.get_connection()
-        cur = conn.cursor()
-        for clave, valor in permitidas.items():
-            texto = (valor or "").strip()
-            # Los campos numéricos se validan aquí y no en la vista: si alguien
-            # guarda "abc" en latitud, el enlace del mapa queda roto y el error
-            # no se ve hasta que alguien lo toca.
-            if EMPRESA_TIPO[clave] == "number" and texto:
-                try:
-                    float(texto)
-                except ValueError:
-                    print(f"[tokens] {clave} no es un número: {texto!r}")
-                    continue
-            cur.execute(
-                "UPDATE dbo.HUB_Config SET Valor = %s, Actualizado = GETDATE() "
-                "WHERE Clave = %s",
-                (texto, clave),
-            )
-            if cur.rowcount == 0:
-                cur.execute(
-                    "INSERT INTO dbo.HUB_Config (Clave, Valor) VALUES (%s, %s)",
-                    (clave, texto),
-                )
-        conn.commit()
-        return True
-    except Exception as exc:
-        print(f"[tokens] error guardando datos de empresa: {exc}", file=sys.stderr)
-        return False
-    finally:
-        if conn is not None:
-            try:
-                conn.close()
-            except Exception:
-                pass
-
-
-# ─── Foto y puesto (escriben en HUB_Users, SIN migración) ───────────────────
-# `HUB_Users.Foto` (base64, NVARCHAR MAX) y `HUB_Users.Puesto` ya existen en la
-# base (migraciones 0020 y posterior). Escribirlos NO requiere migracion
-# nueva: se reusa la columna que HUB ya tiene para el avatar del menú.
+# ─────────────────────────────────────────────────────────────────────────────
+# Reducción de la foto
+# ─────────────────────────────────────────────────────────────────────────────
+# Las fotos que sube el usuario desde Admon pesan 450-550 KB. Eso es demasiado
+# en dos sitios:
 #
-# La foto se guarda como data-URI porque es lo que HUB_Users.Foto ya contiene
-# para los demás usos de la columna (el popup de cambiar contraseña): guardar
-# un PNG pelado obligaría a HUB a distinguir un formato de otro.
-import base64  # noqa: E402
+#   · la ficha se abre por NFC, muchas veces con datos móviles: 375 KB de PNG
+#     para pintar un círculo de 120 px es tirar ancho de banda;
+#   · el vCard va dentro de un archivo que el móvil tiene que parsear entero:
+#     375 KB de foto en un contacto hace que iOS a veces tarde en abrirlo.
+#
+# Se recorta al centro a 320x320 y se guarda como JPEG. Q=82 y 320 px dan un
+# resultado indistinguible a tamaño de foto de contacto (~20 KB) con 25x menos
+# peso. 320 es el lado MÁXIMO: nunca se amplía una imagen más pequeña, porque
+# estirar una foto de 128 px a 320 solo añade bytes.
+LADO_AVATAR = 320
+CALIDAD_JPEG = 82
 
-# Techo de la foto. NVARCHAR(MAX) aguantaría mucho más, pero el avatar del HUB
-# se descarga entero en cada login de Streamlit: un data-URI de 4 MB en una
-# columna que se lee siempre es un coste que no aporta nada. 1 MB de base64 son
-# ~750 KB de imagen, de sobra para un avatar y para el vCard del móvil.
-MAX_FOTO_BYTES = 1_000_000
-TIPOS_IMAGEN = ("image/jpeg", "image/png", "image/webp")
 
+def foto_thumbnail(id_usuario):
+    """(base64_jpeg, content_type) de la foto REDUCIDA, o ('', '').
 
-def guardar_foto(id_usuario, data_uri):
-    """Guarda la foto del usuario en HUB_Users.Foto. True si se guardó.
+    Las fotos de Admon pesan 450-550 KB (fotos de celular). Para la ficha, que
+    se abre por NFC muchas veces con datos móviles, y para el vCard, que el
+    móvil tiene que parsear entero, eso es demasiado: 320x320 JPEG quedan en
+    ~20 KB con el mismo aspecto.
 
-    El data-URI se valida COMPLETO (prefijo + base64) antes de escribir. Sin
-    esa comprobación, un data-URI con html adentro acabaría en el atributo src
-    de la ficha y sería un XSS servido desde la base.
+    Si Pillow no estuviera (imagen de Python sin él), se devuelve la foto
+    original tal cual: más pesada, pero la ficha funciona igual.
     """
-    if not data_uri or not data_uri.startswith("data:"):
-        return False
-    cabecera, _, datos = data_uri.partition(",")
-    if not datos or "," not in data_uri:
-        return False
-    tipo = cabecera[5:].split(";")[0].strip().lower()
-    if tipo not in TIPOS_IMAGEN:
-        print(f"[tokens] tipo de imagen rechazado: {tipo!r}")
-        return False
-    try:
-        crudo = base64.b64decode(datos, validate=True)
-    except Exception:
-        print("[tokens] la foto no es base64 válido")
-        return False
+    crudo, _tipo = foto_bytes(id_usuario)
     if not crudo:
-        return False
-    if len(data_uri) > MAX_FOTO_BYTES:
-        print(f"[tokens] foto demasiado grande: {len(data_uri)} bytes")
-        return False
-    conn = None
+        return "", ""
     try:
-        conn = db.get_connection()
-        cur = conn.cursor()
-        cur.execute("UPDATE dbo.HUB_Users SET Foto = %s WHERE Id = %s",
-                    (data_uri, id_usuario))
-        cambiados = cur.rowcount
-        conn.commit()
-        return cambiados > 0
+        import base64 as _b64
+        import io
+
+        from PIL import Image
+
+        img = Image.open(io.BytesIO(crudo))
+        # El recorte va al CENTRO: la cara de una foto de carnet está ahí, y
+        # recortar por arriba cortaría la frente.
+        ancho, alto = img.size
+        lado = min(ancho, alto, LADO_AVATAR)
+        izquierda = (ancho - lado) // 2
+        arriba = (alto - lado) // 2
+        img = img.crop((izquierda, arriba, izquierda + lado, arriba + lado))
+        if img.mode not in ("RGB", "L"):
+            # Un PNG con canal alfa a JPEG se vuelve negro si no se compone
+            # antes: el fondo transparente se interpretaría como color.
+            img = img.convert("RGBA")
+            fondo = Image.new("RGB", img.size, (15, 23, 42))
+            fondo.paste(img, mask=img.split()[-1])
+            img = fondo
+        elif img.mode == "L":
+            img = img.convert("RGB")
+        salida = io.BytesIO()
+        img.save(salida, format="JPEG", quality=CALIDAD_JPEG,
+                 optimize=True, progressive=True)
+        return _b64.b64encode(salida.getvalue()).decode("ascii"), "image/jpeg"
     except Exception as exc:
-        print(f"[tokens] error guardando la foto: {exc}", file=sys.stderr)
-        return False
-    finally:
-        if conn is not None:
-            try:
-                conn.close()
-            except Exception:
-                pass
-
-
-def borrar_foto(id_usuario):
-    """Deja la foto en NULL. La ficha vuelve a mostrar las iniciales."""
-    conn = None
-    try:
-        conn = db.get_connection()
-        cur = conn.cursor()
-        cur.execute("UPDATE dbo.HUB_Users SET Foto = NULL WHERE Id = %s",
-                    (id_usuario,))
-        conn.commit()
-        return True
-    except Exception as exc:
-        print(f"[tokens] error borrando la foto: {exc}", file=sys.stderr)
-        return False
-    finally:
-        if conn is not None:
-            try:
-                conn.close()
-            except Exception:
-                pass
-
-
-def guardar_puesto(id_usuario, puesto):
-    """Guarda el puesto en HUB_Users.Puesto (columna que ya existe)."""
-    conn = None
-    try:
-        conn = db.get_connection()
-        cur = conn.cursor()
-        cur.execute("UPDATE dbo.HUB_Users SET Puesto = %s WHERE Id = %s",
-                    ((puesto or "").strip()[:120], id_usuario))
-        conn.commit()
-        return True
-    except Exception as exc:
-        print(f"[tokens] error guardando el puesto: {exc}", file=sys.stderr)
-        return False
-    finally:
-        if conn is not None:
-            try:
-                conn.close()
-            except Exception:
-                pass
+        print(f"[tokens] no se pudo reducir la foto: {exc}", file=sys.stderr)
+        return _b64.b64encode(crudo).decode("ascii"), _tipo or "image/jpeg"

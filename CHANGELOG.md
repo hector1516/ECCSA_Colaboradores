@@ -6,6 +6,65 @@ Todos los cambios de esta app. Formato: qué cambió, en qué archivos y por qu�
 - `migrations/0057…` → migración de esquema (vive en el repo **HUB**)
 - `deploy/app.conf` → definición del contenedor en WebbApps
 
+## 0.2.0 — 2026-10-06
+
+**Reescritura de dónde salen los datos.** Todo se lee de `HUB_Users` y de las
+tablas que las demás apps ya llenan. Esta app deja de crear estructura propia.
+
+### Removed
+
+- **`HUB_ColaboradorFicha` (tabla).** El token ya no se guarda: se **deriva**
+  con HMAC-SHA256 del `IdUsuario` y de un secreto del volumen
+  (`panel/tokens.py`). Ventajas: no puede quedar huérfano ni duplicado, no hay
+  que "emitir" nada, y `HUB_Users` queda intacta. Migraciones `0059` (DROP,
+  aborta si hubiera filas) en el repo HUB.
+- **Emisión / revocación / reactivación desde el panel.** Con el token derivado
+  no hay nada que emitir: el enlace de todos existe siempre y es el mismo para
+  siempre.
+- **Subida de foto y puesto desde el panel.** Escribirían en `HUB_Users`, y
+  `HUB_Users` es de solo lectura para esta app.
+- **El parser de multipart/form-data** que existía solo para esa subida.
+
+### Added
+
+- **Fotos reales** (`panel/tokens.py`): `HUB_UsuariosFotos.Archivo`, que es
+  donde el usuario las sube desde **Admon** (10 de 11 personas, 450-550 KB).
+  Antes se usaba `HUB_UserAvatars`, que son avatares generados por IA — no la
+  persona.
+- **Reducción de la foto a 320x320 JPEG** antes de pintar: de 450-550 KB a
+  ~20-28 KB (95% menos). Sin esto, la ficha —que se abre por NFC, a menudo con
+  datos móviles— descargaba medio megabyte para pintar un círculo de 120 px, y
+  el vCard se volvía heavyweight para el importador del móvil. Añade `Pillow`.
+- **Clave `colab_empresa_sitio`** y siembra de los datos de la empresa desde
+  `pdf_generator.py` (migración `0058`), que ya los tenía hardcodeados.
+
+### Fixed
+
+- `AVATARES_SQL` seleccionaba `IdUsuario, AvatarBase64` y se leía `fila[0]`: el
+  **Id** en vez de la imagen, así que toda ficha salía con iniciales y la app
+  leía 150-375 KB inútilmente.
+- `RAISERROR` no admite `+` para concatenar el mensaje (`0059` daba "Incorrect
+  syntax near '+'").
+- El concatenado implícito de cadenas partido en dos líneas dentro de
+  `USING (VALUES …)` tampoco lo aceptaba el servidor (`0058`).
+
+### Security
+
+- El secreto de derivación de tokens es **distinto** del del panel: rotar la
+  contraseña del panel no invalida las tarjetas NFC ya impresas.
+
+### Changed
+
+- **El panel ahora es de solo lectura** sobre las personas. Lo único que escribe
+  es el formulario de datos de la empresa (`HUB_Config`).
+
+### Precio asumido del diseño
+
+Rotar el secreto de derivación **invalida todas las tarjetas**, porque el token
+sale de ahí; y ya no hay contador de accesos por tarjeta. Si molesta, la
+solución correcta es una tabla de **solo revocación**, no volver a guardar los
+tokens.
+
 ## 0.1.2 — 2026-10-06
 
 Primera versión pública (ya está en `colaboradores.ecc-sa.com.mx`).

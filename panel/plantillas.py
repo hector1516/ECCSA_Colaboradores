@@ -154,6 +154,7 @@ def ficha_page(ficha, empresa):
     lat = empresa.get("colab_empresa_latitud", "")
     lon = empresa.get("colab_empresa_longitud", "")
     foto = ficha.get("Foto") or ""
+    foto_tipo = ficha.get("FotoTipo") or "image/jpeg"
 
     # El slug va en la URL de la foto del vCard y en el canonical; el token es
     # un secreto y no debe filtrarse a un tercero por Referer.
@@ -162,16 +163,19 @@ def ficha_page(ficha, empresa):
     wa = url_whatsapp(empresa.get("colab_empresa_whatsapp") or telefono,
                       f"Hola, te escribo de parte de {nombre}.")
     mapa = url_mapa(lat, lon, direccion)
+    sitio = (empresa.get("colab_empresa_sitio") or "").strip()
+    if sitio and not sitio.startswith("http"):
+        sitio = "https://" + sitio
     ig = url_instagram(empresa.get("colab_empresa_instagram"))
     fb = url_facebook(empresa.get("colab_empresa_facebook"))
     tel_oficina = empresa.get("colab_empresa_telefono", "")
 
     # ── Identidad ──
     if foto:
-        # La foto viene de HUB_Users.Foto como data-URI. Se pone tal cual en el
-        # <img>: reconvertirla a un endpoint aparte obligaría a mandar la
-        # imagen por la red otra vez en cada visita.
-        identidad = (f'<img class="foto" src="{esc(foto)}" '
+        # La foto viene de HUB_UsuariosFotos, reducida a 320x320 JPEG. Se pone
+        # como data-URI: la ficha es una sola página y sin segunda petición por
+        # la imagen.
+        identidad = (f'<img class="foto" src="data:{esc(foto_tipo)};base64,{esc(foto)}" '
                      f'alt="Fotografía de {esc(nombre)}" width="120" height="120">')
     else:
         # Sin foto: iniciales sobre el color de acento. Es lo que evita que la
@@ -228,6 +232,9 @@ def ficha_page(ficha, empresa):
     if ig:
         redes.append(f'<a class="red ig" href="{esc(ig)}" target="_blank" rel="noopener" '
                      f'aria-label="Instagram">ig</a>')
+    if sitio:
+        redes.append(f'<a class="red web" href="{esc(sitio)}" target="_blank" '
+                     f'rel="noopener" aria-label="Sitio web">🌐</a>')
     redes_html = ("\n".join(redes)
                   if redes else '<span class="sin-redes">Sin redes configuradas</span>')
 

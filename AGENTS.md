@@ -25,7 +25,8 @@ filas — la foto y el puesto se suben desde `/admin`.
 
 | Dato | Origen |
 |---|---|
-| Nombre, correo, **foto**, **puesto** | `HUB_Users` — la foto es un data-URI en `HUB_Users.Foto` (migración 0020) y el puesto en `HUB_Users.Puesto`. Ambas columnas **ya existían** y el panel las escribe: cero migración nueva |
+| Nombre, correo, **puesto** | `HUB_Users` — **solo lectura**. Esta app no escribe nada ahí |
+| **Foto** | `HUB_UsuariosFotos.Archivo` — la sube el usuario desde **Admon** (VARBINARY en tabla aparte, migración `0045` de AdmonApp, creada justo para que otra app la pidiera por `IdUsuario`). Se recorta a 320x320 JPEG al pintar |
 | **Teléfono móvil** | `MAC.Telefono` — **NO** está en `HUB_Users`, que no tiene columna de teléfono. Es la misma fuente que usan HUB y Field (`get_user_phone`), para que no haya dos números distintos |
 | **Token de la URL**, accesos | `HUB_ColaboradorFicha` — tabla propia, migración `0057` en el repo **HUB** |
 | Dirección, redes, WhatsApp, coordenadas | `HUB_Config`, claves `colab_empresa_*` |
@@ -124,9 +125,10 @@ kiosco del Dashboard (§2b del contrato): `user` va en `null`.
 - **Cloudflare**: falta el public hostname `colaboradores` en el túnel
   `b4e86661-8992-4069-b8f1-85ae9de3436a` → `localhost:8105`, y las reglas de WAF
   / Bot Fight / rate limiting. **Es la capa de seguridad principal.**
-- **Datos de la empresa**: las 8 claves `colab_empresa_*` están vacías a
-  propósito; se llenan desde `/admin`.
-- **Datos de las personas**: `HUB_Users.Foto` y `HUB_Users.Puesto` están
-  vacías en las 11 filas; hay que subirlas desde `/admin`.
+- **Datos de la empresa**: la dirección y el sitio ya vienen sembrados desde
+  `pdf_generator.py` (migración `0058`); WhatsApp, Facebook, Instagram y las
+  coordenadas siguen vacías y se llenan desde `/admin`.
+- **Los 11 usuarios tienen `Puesto` vacío** en `HUB_Users`; el panel muestra "—"
+  y la ficha omite el subtítulo hasta que AdmonApp lo llene.
 - **Iconos PWA**: no hay manifest ni iconos (la app no se instala; se abre en
   el navegador desde la NFC).

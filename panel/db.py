@@ -3,15 +3,19 @@ panel/db.py — Acceso a los datos de la ficha pública
 =====================================================
 Solo lectura sobre `ECCSA_Admon`. Tres fuentes distintas y por qué:
 
-  · HUB_Users          → nombre, correo y FOTO de la persona. La foto ya vive
-                         ahí como base64 (migración 0020), no se duplica.
+  · HUB_Users          → nombre, correo y PUESTO. SOLO LECTURA: esta app no
+                         escribe nada en la tabla de usuarios.
+  · HUB_UsuariosFotos  → la FOTO real, que el usuario sube desde Admon. Es
+                         VARBINARY en tabla aparte (migración 0045 de AdmonApp,
+                         creada justo para que otra app la pidiera por
+                         IdUsuario). Pesa 450-550 KB: se pide SOLO al abrir una
+                         ficha y se reduce a 320x320 antes de pintar.
+  · el token de la URL  → NO está en la base: se deriva con un secreto del
+                         volumen (panel/tokens.py). Nada que sincronizar.
   · MAC.Telefono       → el celular. Es la única fuente de teléfonos que ya
                          usan HUB y Field (`get_user_phone`), así que la ficha
                          muestra el mismo número que el resto del sistema y no
                          una copia que se puede desincronizar.
-  · HUB_ColaboradorFicha → el token de la URL y la telemetría de la tarjeta
-                         (migración 0057).
-
 Y los datos de la EMPRESA salen de HUB_Config (claves `colab_empresa_*`): son
 los mismos para todas las fichas y editarlos en un solo lugar evita que unas
 muestren la dirección vieja y otras la nueva.
@@ -47,9 +51,16 @@ def get_connection():
 # ─────────────────────────────────────────────────────────────────────────────
 # La ficha
 # ─────────────────────────────────────────────────────────────────────────────
-# Un solo SELECT para la ficha completa: menos viajes a un SQL Server que está
-# al otro lado de la red interna, y además evita que la página se renderice a
-# medio camino si la BD va lenta.
+# La ficha se resuelve en DOS consultas a propósito:
+#
+#   1. La persona: HUB_Users (nombre, correo, puesto) + MAC.Telefono. Es ligera.
+#   2. La foto: HUB_UsuariosFotos, SOLO si se está abriendo la ficha.
+#
+# Unirlo todo en un SELECT sería un error de diseño: las fotos pesan 450-550 KB
+# cada una, así que un solo JOIN traería ~5 MB en CADA visita, y en el panel
+# (que lista a todos) serían 5 MB para mostrar una tabla.
+#
+# `HUB_Users` se LEE, nunca se escribe: esta app no toca la tabla de usuarios.
 #
 # El subconsulto de MAC trae el teléfono de una fila suelta (Telefono IS NOT
 # NULL y <> '') con el ORDER BY de la tabla: varias personas pueden tener
@@ -57,14 +68,9 @@ def get_connection():
 # es el más viejo.
 FICHA_SQL = """
 SELECT
-    f.Id,
-    f.Slug,
-    f.Etiqueta,
-    f.Creado,
-    f.NumAccesos,
+    u.Id,
     u.Nombre,
     u.Email,
-    u.Foto,
     u.Puesto,
     (
         SELECT TOP 1 LTRIM(RTRIM(m.Telefono))
@@ -74,60 +80,30 @@ SELECT
           AND  LTRIM(RTRIM(m.Telefono)) <> ''
         ORDER BY m.Telefono DESC
     ) AS Telefono
-FROM   dbo.HUB_ColaboradorFicha f
-JOIN   dbo.HUB_Users u ON u.Id = f.IdUsuario
-WHERE  f.Slug = %s
-  AND  f.Activo = 1
+FROM   dbo.HUB_Users u
+WHERE  u.Id = %s
   AND  u.Activo = 1
 """
 
 
-def obtener_ficha(slug):
-    """Datos de la ficha por slug, o None si no existe / está dada de baja.
+def obtener_persona(id_usuario):
+    """Datos de una persona por Id. None si no existe o está de baja.
 
-    Devuelve None (no una excepción) para los tres casos porque la app los trata
-    igual: responde 404 sin distinguir. Saber si una tarjeta existe pero está
-    desactivada es información que no se le da a quien escanea URLs.
+    Devuelve None (no una excepción) para los dos casos porque la app los trata
+    igual: responde 404 sin distinguir. Saber que un Id existe pero está
+    desactivado es información que no se le da a quien escanea URLs.
     """
-    if not slug:
+    if not id_usuario:
         return None
     conn = None
     try:
         conn = get_connection()
         cur = conn.cursor(as_dict=True)
-        cur.execute(FICHA_SQL, (slug,))
+        cur.execute(FICHA_SQL, (id_usuario,))
         return cur.fetchone()
     except Exception as exc:
-        print(f"[db] error leyendo ficha: {exc}", file=sys.stderr)
+        print(f"[db] error leyendo persona: {exc}", file=sys.stderr)
         return None
-    finally:
-        if conn is not None:
-            try:
-                conn.close()
-            except Exception:
-                pass
-
-
-def registrar_acceso(slug):
-    """Suma un acceso y anota la fecha. Nunca rompe la respuesta.
-
-    La telemetría es lo que permite saber que una tarjeta está perdida (0
-    accesos en meses) o que una tarjeta robada está siendo usada. Por eso el
-    UPDATE va en su propio try/except: si falla, la ficha se sigue mostrando.
-    """
-    conn = None
-    try:
-        conn = get_connection()
-        cur = conn.cursor()
-        cur.execute(
-            "UPDATE dbo.HUB_ColaboradorFicha "
-            "SET NumAccesos = NumAccesos + 1, UltimoAcceso = GETDATE() "
-            "WHERE Slug = %s AND Activo = 1",
-            (slug,),
-        )
-        conn.commit()
-    except Exception as exc:
-        print(f"[db] no se pudo registrar el acceso: {exc}", file=sys.stderr)
     finally:
         if conn is not None:
             try:
@@ -148,6 +124,7 @@ def obtener_empresa():
     claves = (
         "colab_empresa_nombre",
         "colab_empresa_direccion",
+        "colab_empresa_sitio",
         "colab_empresa_telefono",
         "colab_empresa_whatsapp",
         "colab_empresa_facebook",

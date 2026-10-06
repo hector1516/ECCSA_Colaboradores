@@ -21,9 +21,21 @@ import urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from panel import config as config_mod  # noqa: E402
 from panel import server  # noqa: E402
 
 DATA_DIR_TEST = "/tmp/colab_test_data"
+
+# El secreto de derivacion se crea a nivel de MODULO, no en setUpClass: los
+# tests de helpers corren antes que los de rutas y ya necesitan un token real
+# (el slug se deriva del Id, no se puede escribir uno a mano).
+os.makedirs(DATA_DIR_TEST, exist_ok=True)
+config_mod.SECRET_FILE = os.path.join(DATA_DIR_TEST, "admin_secret.txt")
+config_mod.FICHA_SECRET_FILE = os.path.join(DATA_DIR_TEST, "ficha_secret.txt")
+with open(config_mod.SECRET_FILE, "w", encoding="utf-8") as _fh:
+    _fh.write("secreto-de-prueba")
+with open(config_mod.FICHA_SECRET_FILE, "w", encoding="utf-8") as _fh:
+    _fh.write("secreto-de-derivacion-de-prueba")
 
 
 class _SinRedirigir(urllib.request.HTTPRedirectHandler):
@@ -80,13 +92,44 @@ class TestHelpers(unittest.TestCase):
         self.assertEqual(slugify("José María Ñuño"), "jose-maria-nuno")
         self.assertEqual(slugify("  "), "colaborador")
 
-    def test_token_es_largo_y_del_alfabeto(self):
-        from panel.tokens import ALFABETO, LARGO_TOKEN, generar_token
-        t = generar_token()
-        self.assertEqual(len(t), LARGO_TOKEN)
-        self.assertTrue(all(c in ALFABETO for c in t))
-        # Dos tokens distintos: si salieran iguales, el PRNG está roto.
-        self.assertNotEqual(generar_token(), generar_token())
+    def test_el_token_se_deriva_del_id(self):
+        """El token sale del Id: mismo Id, mismo token, siempre."""
+        from panel import tokens as tk
+        self.assertEqual(tk.token_de(2), tk.token_de(2))
+        self.assertNotEqual(tk.token_de(2), tk.token_de(3))
+        self.assertEqual(len(tk.token_de(2)), tk.LARGO_TOKEN)
+        self.assertTrue(all(c in tk.ALFABETO for c in tk.token_de(2)))
+
+    def test_el_token_cambia_si_cambia_el_secreto(self):
+        """Rotar el secreto invalida todas las tarjetas. Es el precio del diseño."""
+        from panel import tokens as tk
+        antes = tk.token_de(2)
+        ruta = config_mod.FICHA_SECRET_FILE
+        with open(ruta, encoding="utf-8") as fh:
+            original = fh.read()
+        try:
+            with open(ruta, "w", encoding="utf-8") as fh:
+                fh.write("otro-secreto-distinto")
+            self.assertNotEqual(tk.token_de(2), antes)
+        finally:
+            with open(ruta, "w", encoding="utf-8") as fh:
+                fh.write(original)
+        self.assertEqual(tk.token_de(2), antes)
+
+    def test_sin_secreto_no_hay_token(self):
+        """Sin secreto la app devuelve cadena vacia, nunca un token debil."""
+        from panel import tokens as tk
+        ruta = config_mod.FICHA_SECRET_FILE
+        with open(ruta, encoding="utf-8") as fh:
+            original = fh.read()
+        try:
+            with open(ruta, "w", encoding="utf-8") as fh:
+                fh.write("")
+            self.assertEqual(tk.token_de(2), "")
+            self.assertEqual(tk.construir_slug("X", 2), "")
+        finally:
+            with open(ruta, "w", encoding="utf-8") as fh:
+                fh.write(original)
 
     def test_slug_valido_rechaza_basura(self):
         from panel.tokens import slug_valido
@@ -135,25 +178,18 @@ class TestRutas(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        os.makedirs(DATA_DIR_TEST, exist_ok=True)
-        with open(os.path.join(DATA_DIR_TEST, "admin_secret.txt"),
-                  "w", encoding="utf-8") as fh:
-            fh.write("secreto-de-prueba")
-
-        # config.SECRET_FILE se apunta al temporal ANTES de arrancar el
-        # servidor. Config lo resuelve al IMPORTAR (DATA se calcula en tiempo de
-        # módulo), así que poner la variable de entorno aquí ya no cambiaría
-        # nada: hay que reasignar la ruta directamente.
-        server.config.SECRET_FILE = os.path.join(DATA_DIR_TEST, "admin_secret.txt")
-
+        # Los secretos ya están puestos a nivel de módulo (ver arriba).
         # Ficha y empresa falsas: el objetivo es la respuesta HTTP.
+        # El slug NO se puede escribir a mano: es el token DERIVADO del Id.
+        slug_real = tokens_mod.construir_slug("Hector Peña", 1)
+        assert slug_real, "el secreto de derivacion no esta puesto"
         cls.ficha = {
-            "Id": 1, "Slug": "hector-pena-" + "A" * 32,
+            "Id": 1, "Slug": slug_real,
             "Etiqueta": "Hector Pena",
-            "Creado": None, "NumAccesos": 0,
             "Nombre": "Hector Peña", "Email": "hector@ecc-sa.com.mx",
-            "Foto": "", "Puesto": "Técnico de campo",
-            "Telefono": "8181234567",
+            "Foto": "", "FotoTipo": "image/jpeg",
+            "Puesto": "Técnico de campo",
+            "Telefono": "8181234567", "Activo": True, "Avatar": "",
         }
         cls.empresa = {
             "colab_empresa_nombre": "ECCSA",
@@ -164,12 +200,13 @@ class TestRutas(unittest.TestCase):
             "colab_empresa_instagram": "@eccsa",
             "colab_empresa_latitud": "25.67",
             "colab_empresa_longitud": "-100.28",
+            "colab_empresa_sitio": "www.ecc-sa.com.mx",
         }
-        server.db.obtener_ficha = lambda slug: (
-            cls.ficha if slug == cls.ficha["Slug"] else None)
+        server.db.obtener_persona = lambda id_usuario: (
+            cls.ficha if id_usuario == 1 else None)
         server.db.obtener_empresa = lambda: cls.empresa
-        server.db.registrar_acceso = lambda slug: None
-        server.tokens.listar_usuarios = lambda: []
+        server.tokens.listar_personas = lambda solo_activas=False: (
+            [cls.ficha] if solo_activas else [cls.ficha, dict(cls.ficha, Id=2, Activo=0)])
         server.tokens.slug_valido = __import__(
             "panel.tokens", fromlist=["slug_valido"]).slug_valido
 
@@ -182,6 +219,16 @@ class TestRutas(unittest.TestCase):
     def tearDownClass(cls):
         cls.httpd.shutdown()
         cls.httpd.server_close()
+
+    def assert_contiene(self, cuerpo, esperado, msg=""):
+        """Como assertIn pero sin volcar 40 KB de HTML al fallar.
+
+        El mensaje de un assertIn sobre la ficha entera hace ilegible el fallo:
+        el diff es la página completa con el CSS inline del shell.
+        """
+        self.assertTrue(
+            esperado in cuerpo,
+            f"{msg or 'falta en la respuesta'} -> {esperado!r}")
 
     def _get(self, ruta, cabeceras=None):
         req = urllib.request.Request(self.base + ruta, headers=cabeceras or {})
@@ -262,6 +309,53 @@ class TestRutas(unittest.TestCase):
         codigo, _, _ = self._get("/corto")
         self.assertEqual(codigo, 404)
 
+    def test_la_foto_se_reduce(self):
+        """Una foto de 500 KB no puede ir cruda a la ficha.
+
+        La ficha se abre por NFC, a menudo con datos móviles: 500 KB para pintar
+        un círculo de 120 px es tirar ancho de banda, y en el vCard hace que iOS
+        a veces tarde en abrir el contacto.
+        """
+        import base64
+        import io
+
+        from PIL import Image
+        grande = io.BytesIO()
+        Image.new("RGB", (900, 1200), (255, 107, 0)).save(grande, format="JPEG",
+                                                          quality=95)
+        original = grande.getvalue()
+
+        original_fn = server.tokens.foto_bytes
+        server.tokens.foto_bytes = lambda uid: (original, "image/jpeg")
+        try:
+            reducido, tipo = server.tokens.foto_thumbnail(99)
+            self.assertEqual(tipo, "image/jpeg")
+            self.assertLess(len(reducido) * 8, len(original))
+            salida = Image.open(io.BytesIO(base64.b64decode(reducido)))
+            # Cuadrada (recorte al centro) y no mayor que el tope.
+            self.assertEqual(salida.width, salida.height)
+            self.assertLessEqual(max(salida.size), server.tokens.LADO_AVATAR)
+        finally:
+            server.tokens.foto_bytes = original_fn
+
+    def test_foto_con_alfa_no_sale_negro(self):
+        """Un PNG transparente a JPEG se vuelve negro si no se compone antes."""
+        import base64
+        import io
+
+        from PIL import Image
+        transparente = io.BytesIO()
+        Image.new("RGBA", (900, 900), (255, 107, 0, 0)).save(transparente,
+                                                            format="PNG")
+        original = transparente.getvalue()
+        original_fn = server.tokens.foto_bytes
+        server.tokens.foto_bytes = lambda uid: (original, "image/png")
+        try:
+            _, tipo = server.tokens.foto_thumbnail(99)
+            self.assertEqual(tipo, "image/jpeg")
+        finally:
+            server.tokens.foto_bytes = original_fn
+
     def test_ficha_muestra_el_puesto(self):
         """El puesto viene de HUB_Users.Puesto y va bajo el nombre."""
         _, cuerpo, _ = self._get("/" + self.ficha["Slug"])
@@ -281,20 +375,33 @@ class TestRutas(unittest.TestCase):
         self.assertNotIn('class="foto"', texto)
 
     def test_foto_que_rompe_el_html_se_escapa(self):
-        """Una Foto con HTML se escapa: si no, es XSS servido desde la BD."""
-        server.db.obtener_ficha = lambda slug: dict(
-            self.ficha, Foto='"><script>alert(1)</script>')
+        """Una foto con HTML se escapa: si no, es XSS servido desde la BD.
+
+        La foto entra desde `HUB_UsuariosFotos.Archivo` (la sube el usuario
+        desde Admon), reduced a un data-URI: ese es el punto de inyección.
+        """
+        original = server.tokens.persona_por_token
+
+        def con_foto_mala(slug):
+            persona = original(slug)
+            if persona:
+                persona["Foto"] = '"><script>alert(1)</script>'
+                persona["FotoTipo"] = "image/jpeg"
+            return persona
+
+        server.tokens.persona_por_token = con_foto_mala
         try:
             _, cuerpo, _ = self._get("/" + self.ficha["Slug"])
             texto = cuerpo.decode("utf-8")
             self.assertNotIn("<script>alert(1)</script>", texto)
             self.assertIn("&lt;script&gt;", texto)
         finally:
-            server.db.obtener_ficha = lambda slug: (
-                self.ficha if slug == self.ficha["Slug"] else None)
+            server.tokens.persona_por_token = original
 
-    def test_multipart_se_parsea(self):
-        """El parser de multipart es a mano; se prueba con un cuerpo de verdad."""
+    def _multipart_fuera_de_uso(self):
+        """El parser de multipart era para subir fotos; HUB_Users es de solo
+        lectura, asi que ya no aplica. Se deja el resto de esta clase como
+        referencia del formato por si vuelve a hacer falta subir algo."""
         import uuid
         limite = "----prueba" + uuid.uuid4().hex
         cuerpo = (
@@ -323,16 +430,6 @@ class TestRutas(unittest.TestCase):
         self.assertEqual(nombre, "f.png")
         self.assertEqual(ctype, "image/png")
         self.assertTrue(crudo.startswith(b"\x89PNG"))
-
-    def test_guardar_foto_rechaza_basura(self):
-        """Un data-URI que no sea imagen no se escribe en HUB_Users.Foto.
-
-        Sin esta validación, un data-URI con html dentro acabaría en el src de
-        la ficha y sería un XSS servido desde la base de datos.
-        """
-        self.assertFalse(tokens_mod.guardar_foto(999999, "no-es-data-uri"))
-        self.assertFalse(tokens_mod.guardar_foto(999999, "data:text/html;base64,PGgx"))
-        self.assertFalse(tokens_mod.guardar_foto(999999, "data:image/png;base64,!!!"))
 
     def test_la_ip_real_viene_de_cloudflare(self):
         """Detrás de cloudflared, la IP del socket es SIEMPRE la misma.

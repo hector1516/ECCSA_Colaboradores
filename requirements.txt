@@ -15,6 +15,12 @@
 # --- Datos (mandato: Field) --------------------------------------------------
 pymssql==2.2.11
 
+# --- Imagenes (mandato: Field) ------------------------------------------------
+# Recorta y recomprime los avatares: en la BD son PNG de 600x600 que pesan
+# 150-375 KB, y la ficha (que se abre por NFC con datos moviles) los pinta en un
+# circulo de 120 px. A 320x320 JPEG quedan en ~20 KB con el mismo aspecto.
+Pillow==11.0.0
+
 # --- Zonas horarias (mandato) -------------------------------------------------
 # Se usa para mostrar "la última vez que se abrió esta tarjeta" en hora de
 # México y no en UTC del servidor.

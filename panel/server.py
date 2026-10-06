@@ -31,7 +31,6 @@ petición llegue aquí, y es la que hay que configurar en el túnel (§3 del man
 Este límite existe para dos casos: el WAF todavía no está puesto, y el tráfico
 de una IP concreta se sale de control.
 """
-import base64
 import hmac
 import json
 import os
@@ -46,7 +45,7 @@ from panel import config, db, plantillas, tokens
 from panel.lugar import lugar_de
 from panel.vcard import construir_vcard
 
-MAX_BODY = 3 * 1024 * 1024   # con la foto en base64 el body llega a ~1.5 MB
+MAX_BODY = 256 * 1024        # el panel solo manda formularios de texto
 COOKIE_SESION = "colab_sesion"
 
 
@@ -160,7 +159,7 @@ def cerrar_sesion(cookie):
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "ECCSA_Colaboradores/0.1.2"
+    server_version = "ECCSA_Colaboradores/0.2.0"
 
     # El log por defecto escribe una línea por petición CON la ruta completa, y
     # la ruta ES el token. Los tokens acabarían en el log del contenedor, que
@@ -240,67 +239,6 @@ class Handler(BaseHTTPRequestHandler):
         crudo = self.rfile.read(largo).decode("utf-8", "replace")
         return {k: v[0] for k, v in urllib.parse.parse_qs(crudo, keep_blank_values=True).items()}
 
-    def _leer_multipart(self):
-        """multipart/form-data, para la subida de la foto.
-
-        Se parsea a mano porque `cgi.FieldStorage` se eliminó de la biblioteca
-        estándar en Python 3.13 y `email` no entiende el formato de la
-        web. Es un parser mínimo: solo lo que el panel necesita (un campo texto
-        y un fichero), y con el tamaño acotado por MAX_BODY.
-
-        Devuelve (campos_texto, ficheros) donde ficheros es
-        {nombre: (nombre_original, bytes, content_type)}.
-        """
-        largo = int(self.headers.get("Content-Length") or 0)
-        if largo <= 0 or largo > MAX_BODY:
-            return {}, {}
-        tipo = self.headers.get("Content-Type") or ""
-        if "boundary=" not in tipo:
-            return {}, {}
-        limite = tipo.split("boundary=", 1)[1].strip().strip('"')
-        cuerpo = self.rfile.read(largo)
-
-        separador = b"--" + limite.encode("utf-8")
-        campos, ficheros = {}, {}
-        for trozo in cuerpo.split(separador):
-            if not trozo or trozo in (b"--", b"--\r\n", b"\r\n"):
-                continue
-            trozo = trozo.lstrip(b"\r\n")
-            if b"\r\n\r\n" not in trozo:
-                continue
-            cab, _, cuerpo_parte = trozo.partition(b"\r\n\r\n")
-            cuerpo_parte = cuerpo_parte.rstrip(b"\r\n")
-
-            # Se recorren TODAS las cabeceras de la parte, no solo la de
-            # Content-Disposition: el Content-Type va en su PROPIA línea, y
-            # si se mirara solo esa línea, la imagen llega sin content-type y no
-            # hay forma de decidir si es una foto o HTML.
-            nombre, nombre_archivo, ctype = None, None, ""
-            for linea in cab.decode("utf-8", "replace").split("\r\n"):
-                if ":" not in linea:
-                    continue
-                clave, _, valor = linea.partition(":")
-                clave = clave.strip().lower()
-                if clave == "content-disposition":
-                    for pedazo in valor.split(";")[1:]:
-                        pedazo = pedazo.strip()
-                        if pedazo.startswith("name="):
-                            nombre = pedazo[5:].strip('"')
-                        elif pedazo.startswith("filename="):
-                            nombre_archivo = pedazo[9:].strip('"')
-                elif clave == "content-type":
-                    ctype = valor.strip()
-            if not nombre:
-                continue
-            if nombre_archivo:
-                # Fichero vacío = el usuario no eligió nada; no es un error.
-                if cuerpo_parte:
-                    ficheros[nombre] = (nombre_archivo, cuerpo_parte, ctype)
-            else:
-                campos[nombre] = cuerpo_parte.decode("utf-8", "replace")
-        return campos, ficheros
-
-    # ── GET ───────────────────────────────────────────────────────────────────
     def do_GET(self):
         # La ruta NUNCA se pasa a _enviar: la ruta ES el token.
         ip = lugar_de(self.headers, self.client_address[0])[1]
@@ -346,14 +284,18 @@ class Handler(BaseHTTPRequestHandler):
             # No se distingue "slug con forma rara" de "no existe": mismo 404.
             return self._enviar(404, _error_page(), detalle="slug-invalido")
 
-        ficha = db.obtener_ficha(slug)
-        if not ficha:
-            # Un 404 aquí es la señal más útil del log: si de repente hay
-            # muchos desde la misma IP, alguien está barriendo tokens.
+        # El token NO esta en la base: se compara contra el DERIVADO de cada
+        # persona activa. No se distingue "no existe" de "esta de baja": mismo
+        # 404, para que escanear URLs no confirme que un token existio.
+        persona = tokens.persona_por_token(slug)
+        if not persona:
+            # Un 404 repetido desde la misma IP es la senal mas util del log:
+            # alguien esta barriendo tokens.
             return self._enviar(404, _error_page(), detalle="slug-no-existe")
 
-        db.registrar_acceso(slug)
-        ip_real = ficha.get("_ip") or ip
+        ficha = db.obtener_persona(persona["Id"]) or {}
+        ficha["Foto"] = persona.get("Foto") or ""
+        ficha["FotoTipo"] = persona.get("FotoTipo") or ""
 
         if len(partes) == 1:
             empresa = db.obtener_empresa()
@@ -368,7 +310,7 @@ class Handler(BaseHTTPRequestHandler):
                 empresa=empresa.get("colab_empresa_nombre"),
                 puesto=(ficha.get("Puesto") or "").strip(),
                 direccion=empresa.get("colab_empresa_direccion"),
-                sitio=None,
+                sitio=empresa.get("colab_empresa_sitio"),
                 foto=ficha.get("Foto"),
             )
             return self._enviar(
@@ -405,9 +347,6 @@ class Handler(BaseHTTPRequestHandler):
             return self._enviar(401, _error_page("Sin sesión"))
         form = self._leer_form()
 
-        if ruta == "/admin/emitir":
-            tokens.emitir(int(form.get("id", 0) or 0))
-            return self._redirigir("/admin")
         if ruta == "/admin/revocar":
             tokens.revocar(int(form.get("id", 0) or 0))
             return self._redirigir("/admin")
@@ -417,8 +356,6 @@ class Handler(BaseHTTPRequestHandler):
         if ruta == "/admin/empresa":
             tokens.guardar_empresa(form)
             return self._redirigir("/admin")
-        if ruta == "/admin/persona":
-            return self._guardar_persona(ip)
 
         return self._enviar(404, _error_page())
 
@@ -431,46 +368,11 @@ class Handler(BaseHTTPRequestHandler):
         """
         if not _sesion_valida(self._cookies().get(COOKIE_SESION)):
             return self._enviar(401, _login_page())
-        filas = tokens.listar_usuarios()
+        filas = tokens.listar_personas()
         empresa = db.obtener_empresa()
         return self._enviar(200, _admin_page(filas, empresa))
 
     # ── ficha de una persona (foto y puesto) ─────────────────────────────────
-    def _guardar_persona(self, ip):
-        """Guarda foto y puesto. Escriben en HUB_Users, sin migración nueva.
-
-        La foto llega como fichero binario y se convierte a data-URI antes de
-        guardarse, que es el formato que ya usa HUB_Users.Foto para el avatar
-        del HUB: si se guardara el PNG pelado, HUB y Field tendrían que
-        distinguir dos formatos en la misma columna.
-        """
-        campos, ficheros = self._leer_multipart()
-        if not campos and not ficheros:
-            # No es multipart: alguien mandó el formulario a pelo.
-            campos = self._leer_form()
-        try:
-            id_usuario = int(campos.get("id") or 0)
-        except (TypeError, ValueError):
-            return self._enviar(400, _error_page("id inválido"))
-        if id_usuario <= 0:
-            return self._enviar(400, _error_page("id inválido"))
-
-        if "puesto" in campos:
-            tokens.guardar_puesto(id_usuario, campos["puesto"])
-
-        accion = campos.get("accion_foto")
-        if accion == "borrar":
-            tokens.borrar_foto(id_usuario)
-        elif "foto" in ficheros:
-            _nombre, crudo, ctype = ficheros["foto"]
-            tipo = (ctype or "").lower().strip()
-            if tipo not in tokens.TIPOS_IMAGEN:
-                tipo = "image/jpeg"
-            data_uri = (f"data:{tipo};base64,"
-                        + base64.b64encode(crudo).decode("ascii"))
-            tokens.guardar_foto(id_usuario, data_uri)
-
-        return self._redirigir("/admin")
 
     # ── login ────────────────────────────────────────────────────────────────
     def _login(self, ip):
@@ -525,73 +427,50 @@ def _login_page():
 
 
 def _admin_page(filas, empresa):
+    """Panel: quién tiene ficha, cuál es su enlace, y los datos de la empresa.
+
+    Es de SOLO LECTURA sobre las personas: el enlace de cada uno se DERIVA de su
+    Id, así que no hay nada que "emitir" ni que "revocar". La única escritura es
+    el formulario de datos de la empresa (HUB_Config).
+    """
     base = plantillas._cabeza("Panel · Colaboradores", robots=True)
     cuerpo = ['<body class="panel"><main class="admin">']
     cuerpo.append('<h1>🎴 Fichas de colaborador</h1>')
+    cuerpo.append('<p class="nota">El enlace de cada persona se deriva de su Id y '
+                  'ya es fijo: se graba en la tarjeta NFC y no cambia nunca. '
+                  'Las fotos y los puestos los escribe el HUB, esta app solo lee '
+                  '<code>HUB_Users</code>.</p>')
 
     filas_html = []
     for f in filas:
-        slug = f.get("Slug")
-        estado = ("🟢 Activa" if f.get("FichaActivo")
-                  else ("⚪ Inactiva" if f.get("FichaId") else "— sin ficha"))
+        slug = f.get("Slug") or ""
         persona_activa = "Activo" if f.get("Activo") else "🔴 Baja"
         if slug:
-            url = f"/{slug}"
-            acciones = (
-                f'<a class="token" href="{url}" target="_blank">{slug}</a>'
-                + (f'<a class="btn mini" href="/{slug}/contacto.vcf">vCard</a>')
-                + (f'<form method="post" action="/admin/revocar">'
-                   f'<input type="hidden" name="id" value="{f["Id"]}">'
-                   f'<button class="btn mini peligro">Revocar</button></form>'
-                   if f.get("FichaActivo") else
-                   f'<form method="post" action="/admin/reactivar">'
-                   f'<input type="hidden" name="id" value="{f["Id"]}">'
-                   f'<button class="btn mini">Reactivar</button></form>')
-            )
+            acciones = (f'<a class="token" href="/{slug}" target="_blank">{slug}</a>'
+                        + f'<a class="btn mini" href="/{slug}/contacto.vcf" '
+                          f'target="_blank">vCard</a>')
+            estado = "🟢 Ficha activa" if f.get("Activo") else "⚪ Persona de baja"
         else:
-            acciones = (f'<form method="post" action="/admin/emitir">'
-                        f'<input type="hidden" name="id" value="{f["Id"]}">'
-                        f'<button class="btn mini">Emitir</button></form>')
-        # La foto se ve en miniatura para que el admin sepa a QUIÉN se la está
-        # poniendo: subir una foto y que salga la de otro es un error que solo
-        # se detecta en la ficha publicada.
-        if f.get("Foto"):
-            miniatura = (f'<img class="miniatura" src="{plantillas.esc(f["Foto"])}" '
-                         f'alt="" width="34" height="34">')
-        else:
-            iniciales = "".join(p[0] for p in (f.get("Nombre") or "").split()[:2])
-            miniatura = (f'<span class="miniatura vacia" aria-hidden="true">'
-                         f'{plantillas.esc(iniciales.upper() or "?")}</span>')
+            # Sin token = falta el secreto de derivación en el volumen. No es un
+            # estado por persona: es un problema del contenedor.
+            acciones = '<span class="sin-ficha">sin token (falta el secreto)</span>'
+            estado = "— sin ficha"
 
-        puesto = f.get("Puesto") or ""
-        editor = (
-            f'<form method="post" action="/admin/persona" '
-            f'enctype="multipart/form-data" class="editor">'
-            f'<input type="hidden" name="id" value="{f["Id"]}">'
-            f'<input type="text" name="puesto" placeholder="Puesto" '
-            f'value="{plantillas.esc(puesto)}">'
-            f'<label class="subir" title="Subir foto">'
-            f'<input type="file" name="foto" accept="image/*">'
-            f'<span>📷</span></label>'
-            + (f'<button class="btn mini peligro" name="accion_foto" '
-               f'value="borrar" title="Quitar la foto">✕</button>'
-               if f.get("Foto") else "")
-            + f'<button class="btn mini">Guardar</button>'
-            f'</form>')
+        iniciales = "".join(x[0] for x in (f.get("Nombre") or "").split()[:2])
+        miniatura = (f'<span class="miniatura vacia" aria-hidden="true">'
+                     f'{plantillas.esc(iniciales.upper() or "?")}</span>')
 
         filas_html.append(
             f'<tr><td><span class="celda-usuario">{miniatura}'
             f'<span>{plantillas.esc(f.get("Nombre"))}</span></span></td>'
             f'<td>{plantillas.esc(f.get("Email"))}</td>'
-            f'<td class="acciones">{editor}</td>'
+            f'<td>{plantillas.esc(f.get("Puesto") or "—")}</td>'
             f'<td>{persona_activa}</td><td>{estado}</td>'
-            f'<td>{plantillas.esc(f.get("NumAccesos") or 0)}</td>'
             f'<td class="acciones">{acciones}</td></tr>')
 
     cuerpo.append('<table class="tabla"><thead><tr>'
-                  '<th>Nombre</th><th>Correo</th><th>Foto / Puesto</th>'
-                  '<th>Usuario</th><th>Ficha</th>'
-                  '<th>Accesos</th><th>Enlace</th></tr></thead><tbody>'
+                  '<th>Nombre</th><th>Correo</th><th>Puesto</th>'
+                  '<th>Usuario</th><th>Ficha</th><th>Enlace</th></tr></thead><tbody>'
                   + "\n".join(filas_html) + '</tbody></table>')
 
     # Formulario de empresa
@@ -608,6 +487,7 @@ def _admin_page(filas, empresa):
                   + campo("colab_empresa_whatsapp", "WhatsApp (con clave de país)")
                   + campo("colab_empresa_facebook", "Facebook")
                   + campo("colab_empresa_instagram", "Instagram")
+                  + campo("colab_empresa_sitio", "Sitio web")
                   + campo("colab_empresa_latitud", "Latitud", "text")
                   + campo("colab_empresa_longitud", "Longitud", "text")
                   + '<button class="btn">Guardar</button></form>')
