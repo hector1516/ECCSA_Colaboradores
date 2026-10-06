@@ -160,7 +160,7 @@ def cerrar_sesion(cookie):
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "ECCSA_Colaboradores/0.1"
+    server_version = "ECCSA_Colaboradores/0.1.1"
 
     # El log por defecto escribe una línea por petición CON la ruta completa, y
     # la ruta ES el token. Los tokens acabarían en el log del contenedor, que

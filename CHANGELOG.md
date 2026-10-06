@@ -6,9 +6,9 @@ Todos los cambios de esta app. Formato: qué cambió, en qué archivos y por qu�
 - `migrations/0057…` → migración de esquema (vive en el repo **HUB**)
 - `deploy/app.conf` → definición del contenedor en WebbApps
 
-## 0.1.0 — 2026-10-06
+## 0.1.1 — 2026-10-06
 
-Primera versión.
+Primera versión, con la sesión del panel corregida (ver *Fixed*).
 
 ### Added
 
