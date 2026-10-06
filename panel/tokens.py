@@ -106,7 +106,7 @@ def slug_valido(slug):
 # Escrituras (solo desde el panel autenticado)
 # ─────────────────────────────────────────────────────────────────────────────
 USUARIOS_SQL = """
-SELECT u.Id, u.Nombre, u.Email, u.Activo,
+SELECT u.Id, u.Nombre, u.Email, u.Activo, u.Puesto, u.Foto,
        f.Id AS FichaId, f.Slug, f.Etiqueta, f.Activo AS FichaActivo,
        f.Creado, f.NumAccesos, f.UltimoAcceso
 FROM   dbo.HUB_Users u
@@ -290,6 +290,112 @@ def guardar_empresa(valores):
         return True
     except Exception as exc:
         print(f"[tokens] error guardando datos de empresa: {exc}", file=sys.stderr)
+        return False
+    finally:
+        if conn is not None:
+            try:
+                conn.close()
+            except Exception:
+                pass
+
+
+# ─── Foto y puesto (escriben en HUB_Users, SIN migración) ───────────────────
+# `HUB_Users.Foto` (base64, NVARCHAR MAX) y `HUB_Users.Puesto` ya existen en la
+# base (migraciones 0020 y posterior). Escribirlos NO requiere migracion
+# nueva: se reusa la columna que HUB ya tiene para el avatar del menú.
+#
+# La foto se guarda como data-URI porque es lo que HUB_Users.Foto ya contiene
+# para los demás usos de la columna (el popup de cambiar contraseña): guardar
+# un PNG pelado obligaría a HUB a distinguir un formato de otro.
+import base64  # noqa: E402
+
+# Techo de la foto. NVARCHAR(MAX) aguantaría mucho más, pero el avatar del HUB
+# se descarga entero en cada login de Streamlit: un data-URI de 4 MB en una
+# columna que se lee siempre es un coste que no aporta nada. 1 MB de base64 son
+# ~750 KB de imagen, de sobra para un avatar y para el vCard del móvil.
+MAX_FOTO_BYTES = 1_000_000
+TIPOS_IMAGEN = ("image/jpeg", "image/png", "image/webp")
+
+
+def guardar_foto(id_usuario, data_uri):
+    """Guarda la foto del usuario en HUB_Users.Foto. True si se guardó.
+
+    El data-URI se valida COMPLETO (prefijo + base64) antes de escribir. Sin
+    esa comprobación, un data-URI con html adentro acabaría en el atributo src
+    de la ficha y sería un XSS servido desde la base.
+    """
+    if not data_uri or not data_uri.startswith("data:"):
+        return False
+    cabecera, _, datos = data_uri.partition(",")
+    if not datos or "," not in data_uri:
+        return False
+    tipo = cabecera[5:].split(";")[0].strip().lower()
+    if tipo not in TIPOS_IMAGEN:
+        print(f"[tokens] tipo de imagen rechazado: {tipo!r}")
+        return False
+    try:
+        crudo = base64.b64decode(datos, validate=True)
+    except Exception:
+        print("[tokens] la foto no es base64 válido")
+        return False
+    if not crudo:
+        return False
+    if len(data_uri) > MAX_FOTO_BYTES:
+        print(f"[tokens] foto demasiado grande: {len(data_uri)} bytes")
+        return False
+    conn = None
+    try:
+        conn = db.get_connection()
+        cur = conn.cursor()
+        cur.execute("UPDATE dbo.HUB_Users SET Foto = %s WHERE Id = %s",
+                    (data_uri, id_usuario))
+        cambiados = cur.rowcount
+        conn.commit()
+        return cambiados > 0
+    except Exception as exc:
+        print(f"[tokens] error guardando la foto: {exc}", file=sys.stderr)
+        return False
+    finally:
+        if conn is not None:
+            try:
+                conn.close()
+            except Exception:
+                pass
+
+
+def borrar_foto(id_usuario):
+    """Deja la foto en NULL. La ficha vuelve a mostrar las iniciales."""
+    conn = None
+    try:
+        conn = db.get_connection()
+        cur = conn.cursor()
+        cur.execute("UPDATE dbo.HUB_Users SET Foto = NULL WHERE Id = %s",
+                    (id_usuario,))
+        conn.commit()
+        return True
+    except Exception as exc:
+        print(f"[tokens] error borrando la foto: {exc}", file=sys.stderr)
+        return False
+    finally:
+        if conn is not None:
+            try:
+                conn.close()
+            except Exception:
+                pass
+
+
+def guardar_puesto(id_usuario, puesto):
+    """Guarda el puesto en HUB_Users.Puesto (columna que ya existe)."""
+    conn = None
+    try:
+        conn = db.get_connection()
+        cur = conn.cursor()
+        cur.execute("UPDATE dbo.HUB_Users SET Puesto = %s WHERE Id = %s",
+                    ((puesto or "").strip()[:120], id_usuario))
+        conn.commit()
+        return True
+    except Exception as exc:
+        print(f"[tokens] error guardando el puesto: {exc}", file=sys.stderr)
         return False
     finally:
         if conn is not None:

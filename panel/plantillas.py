@@ -232,7 +232,8 @@ def ficha_page(ficha, empresa):
                   if redes else '<span class="sin-redes">Sin redes configuradas</span>')
 
     empresa_html = ""
-    if nombre_empresa or direccion:
+    puesto = (ficha.get("Puesto") or "").strip()
+    if nombre_empresa or direccion or puesto:
         empresa_html = (
             f'<div class="empresa">'
             f'<div class="emp-nombre">{esc(nombre_empresa)}</div>'
@@ -248,7 +249,9 @@ def ficha_page(ficha, empresa):
         + '<main class="tarjeta">\n'
         + f'  <div class="identidad">{identidad}'
         + f'<h1 class="nombre">{esc(nombre)}</h1>'
-        + (f'<p class="puesto">{esc(nombre_empresa)}</p>' if nombre_empresa else "")
+        + (f'<p class="puesto">{esc(puesto)}</p>' if puesto else "")
+        + (f'<p class="empresa-nombre">{esc(nombre_empresa)}</p>'
+           if nombre_empresa else "")
         + '</div>\n'
         + f'  <div class="acciones">{acciones_html}</div>\n'
         + (f'  <ul class="datos">{datos_html}</ul>\n' if datos else "")

@@ -31,11 +31,13 @@ petición llegue aquí, y es la que hay que configurar en el túnel (§3 del man
 Este límite existe para dos casos: el WAF todavía no está puesto, y el tráfico
 de una IP concreta se sale de control.
 """
+import base64
 import hmac
 import json
 import os
 import secrets
 import sys
+import threading
 import time
 import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -44,7 +46,7 @@ from panel import config, db, plantillas, tokens
 from panel.lugar import lugar_de
 from panel.vcard import construir_vcard
 
-MAX_BODY = 256 * 1024        # un formulario de empresa da kilobytes, no megas
+MAX_BODY = 3 * 1024 * 1024   # con la foto en base64 el body llega a ~1.5 MB
 COOKIE_SESION = "colab_sesion"
 
 
@@ -91,21 +93,70 @@ RATE = RateLimit(config.MAX_INTENTOS_POR_VENTANA, config.VENTANA_SEGUNDOS)
 # ─────────────────────────────────────────────────────────────────────────────
 # Sesión del panel
 # ─────────────────────────────────────────────────────────────────────────────
-def _sesion_valida(cookie):
-    """True si la cookie es el secreto del panel (comparación en tiempo constante).
+# Los tokens de sesión VIVEN en el servidor, en este conjunto. No es persistido:
+# si el contenedor se reinicia, hay que volver a entrar. Es lo correcto para un
+# panel de administración — una sesión caduca con el reinicio, no sobrevive.
+#
+# Antes la cookie se comparaba contra el secreto del panel y por eso el login
+# "funcionaba" pero /admin devolvía 401 siempre: la cookie llevaba un token
+# aleatorio y la comparación era contra el secreto. Guardar los tokens aquí
+# además permite invalidarlos (logout) y evita que rotar el secreto del panel
+# invalide a la vez las sesiones abiertas.
+_SESIONES = set()                # {(token, caduca_epoch)}
+_SESIONES_LOCK = threading.Lock()
+CADUCIDAD_SESION = 8 * 3600      # 8 horas
 
-    `hmac.compare_digest` y no `==`: con `==` el tiempo de respuesta depende de
-    cuántos caracteres correctos lleva, y eso filtra el secreto byte a byte.
+
+def _vigentes_con_candado():
+    """Tokens no vencidos. El llamante YA TIENE el candado.
+
+    Es una función aparte porque `nueva_sesion` necesita la poda dentro de su
+    propio `with`: si esta volviera a tomar el candado, y `threading.Lock` NO es
+    reentrante, se cuelga en el primer login.
     """
-    secreto = config.admin_secret()
-    if not secreto or not cookie:
-        return False
-    return hmac.compare_digest(str(cookie), secreto)
+    ahora = time.time()
+    return {(t, e) for t, e in _SESIONES if e > ahora}
 
 
 def nueva_sesion():
-    """Token de sesión nuevo. Se regenera al hacer login, no es estático."""
-    return secrets.token_urlsafe(32)
+    """Emite un token de sesión nuevo y lo registra. No es estático."""
+    token = secrets.token_urlsafe(32)
+    with _SESIONES_LOCK:
+        # Se poda al emitir, no solo al validar: si nadie vuelve a entrar, las
+        # sesiones viejas se quedan en memoria para siempre.
+        _SESIONES.clear()
+        _SESIONES.update(_vigentes_con_candado())
+        _SESIONES.add((token, time.time() + CADUCIDAD_SESION))
+    return token
+
+
+def _sesion_valida(cookie):
+    """True si la cookie es una sesión viva.
+
+    `hmac.compare_digest` y no `==`: con `==` el tiempo de respuesta depende de
+    cuántos caracteres correctos lleva, y eso filtra el token byte a byte.
+    """
+    if not cookie:
+        return False
+    cookie = str(cookie)
+    with _SESIONES_LOCK:
+        # La poda va también en la validación: es lo que hace que una sesión
+        # vencida deje de servir aunque nadie vuelva a entrar.
+        vivos = _vigentes_con_candado()
+        _SESIONES.clear()
+        _SESIONES.update(vivos)
+        return any(hmac.compare_digest(cookie, t) for t, _e in vivos)
+
+
+def cerrar_sesion(cookie):
+    """Invalida la sesión (logout)."""
+    if not cookie:
+        return
+    with _SESIONES_LOCK:
+        for par in list(_SESIONES):
+            if hmac.compare_digest(str(cookie), par[0]):
+                _SESIONES.discard(par)
+                return
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -167,11 +218,72 @@ class Handler(BaseHTTPRequestHandler):
         return salida
 
     def _leer_form(self):
+        """Formulario urlencoded (lo normal del panel)."""
         largo = int(self.headers.get("Content-Length") or 0)
         if largo <= 0 or largo > MAX_BODY:
             return {}
         crudo = self.rfile.read(largo).decode("utf-8", "replace")
         return {k: v[0] for k, v in urllib.parse.parse_qs(crudo, keep_blank_values=True).items()}
+
+    def _leer_multipart(self):
+        """multipart/form-data, para la subida de la foto.
+
+        Se parsea a mano porque `cgi.FieldStorage` se eliminó de la biblioteca
+        estándar en Python 3.13 y `email` no entiende el formato de la
+        web. Es un parser mínimo: solo lo que el panel necesita (un campo texto
+        y un fichero), y con el tamaño acotado por MAX_BODY.
+
+        Devuelve (campos_texto, ficheros) donde ficheros es
+        {nombre: (nombre_original, bytes, content_type)}.
+        """
+        largo = int(self.headers.get("Content-Length") or 0)
+        if largo <= 0 or largo > MAX_BODY:
+            return {}, {}
+        tipo = self.headers.get("Content-Type") or ""
+        if "boundary=" not in tipo:
+            return {}, {}
+        limite = tipo.split("boundary=", 1)[1].strip().strip('"')
+        cuerpo = self.rfile.read(largo)
+
+        separador = b"--" + limite.encode("utf-8")
+        campos, ficheros = {}, {}
+        for trozo in cuerpo.split(separador):
+            if not trozo or trozo in (b"--", b"--\r\n", b"\r\n"):
+                continue
+            trozo = trozo.lstrip(b"\r\n")
+            if b"\r\n\r\n" not in trozo:
+                continue
+            cab, _, cuerpo_parte = trozo.partition(b"\r\n\r\n")
+            cuerpo_parte = cuerpo_parte.rstrip(b"\r\n")
+
+            # Se recorren TODAS las cabeceras de la parte, no solo la de
+            # Content-Disposition: el Content-Type va en su PROPIA línea, y
+            # si se mirara solo esa línea, la imagen llega sin content-type y no
+            # hay forma de decidir si es una foto o HTML.
+            nombre, nombre_archivo, ctype = None, None, ""
+            for linea in cab.decode("utf-8", "replace").split("\r\n"):
+                if ":" not in linea:
+                    continue
+                clave, _, valor = linea.partition(":")
+                clave = clave.strip().lower()
+                if clave == "content-disposition":
+                    for pedazo in valor.split(";")[1:]:
+                        pedazo = pedazo.strip()
+                        if pedazo.startswith("name="):
+                            nombre = pedazo[5:].strip('"')
+                        elif pedazo.startswith("filename="):
+                            nombre_archivo = pedazo[9:].strip('"')
+                elif clave == "content-type":
+                    ctype = valor.strip()
+            if not nombre:
+                continue
+            if nombre_archivo:
+                # Fichero vacío = el usuario no eligió nada; no es un error.
+                if cuerpo_parte:
+                    ficheros[nombre] = (nombre_archivo, cuerpo_parte, ctype)
+            else:
+                campos[nombre] = cuerpo_parte.decode("utf-8", "replace")
+        return campos, ficheros
 
     # ── GET ───────────────────────────────────────────────────────────────────
     def do_GET(self):
@@ -235,6 +347,7 @@ class Handler(BaseHTTPRequestHandler):
                 email=ficha.get("Email"),
                 telefono=ficha.get("Telefono"),
                 empresa=empresa.get("colab_empresa_nombre"),
+                puesto=(ficha.get("Puesto") or "").strip(),
                 direccion=empresa.get("colab_empresa_direccion"),
                 sitio=None,
                 foto=ficha.get("Foto"),
@@ -261,6 +374,10 @@ class Handler(BaseHTTPRequestHandler):
         if ruta == "/admin/login":
             return self._login(ip)
         if ruta == "/admin/logout":
+            # El logout tiene que hacer DOS cosas: borrar la cookie del cliente
+            # Y quitar el token del conjunto de sesiones. Con solo lo primero,
+            # quien copiara la cookie antes de cerrar sesión seguiría entrando.
+            cerrar_sesion(self._cookies().get(COOKIE_SESION))
             return self._redirigir("/admin", cookie=f"{COOKIE_SESION}=; Path=/; Max-Age=0")
 
         # Todo lo demás exige sesión. Se comprueba ANTES de leer el cuerpo, para
@@ -281,6 +398,8 @@ class Handler(BaseHTTPRequestHandler):
         if ruta == "/admin/empresa":
             tokens.guardar_empresa(form)
             return self._redirigir("/admin")
+        if ruta == "/admin/persona":
+            return self._guardar_persona(ip)
 
         return self._enviar(404, _error_page())
 
@@ -296,6 +415,43 @@ class Handler(BaseHTTPRequestHandler):
         filas = tokens.listar_usuarios()
         empresa = db.obtener_empresa()
         return self._enviar(200, _admin_page(filas, empresa))
+
+    # ── ficha de una persona (foto y puesto) ─────────────────────────────────
+    def _guardar_persona(self, ip):
+        """Guarda foto y puesto. Escriben en HUB_Users, sin migración nueva.
+
+        La foto llega como fichero binario y se convierte a data-URI antes de
+        guardarse, que es el formato que ya usa HUB_Users.Foto para el avatar
+        del HUB: si se guardara el PNG pelado, HUB y Field tendrían que
+        distinguir dos formatos en la misma columna.
+        """
+        campos, ficheros = self._leer_multipart()
+        if not campos and not ficheros:
+            # No es multipart: alguien mandó el formulario a pelo.
+            campos = self._leer_form()
+        try:
+            id_usuario = int(campos.get("id") or 0)
+        except (TypeError, ValueError):
+            return self._enviar(400, _error_page("id inválido"))
+        if id_usuario <= 0:
+            return self._enviar(400, _error_page("id inválido"))
+
+        if "puesto" in campos:
+            tokens.guardar_puesto(id_usuario, campos["puesto"])
+
+        accion = campos.get("accion_foto")
+        if accion == "borrar":
+            tokens.borrar_foto(id_usuario)
+        elif "foto" in ficheros:
+            _nombre, crudo, ctype = ficheros["foto"]
+            tipo = (ctype or "").lower().strip()
+            if tipo not in tokens.TIPOS_IMAGEN:
+                tipo = "image/jpeg"
+            data_uri = (f"data:{tipo};base64,"
+                        + base64.b64encode(crudo).decode("ascii"))
+            tokens.guardar_foto(id_usuario, data_uri)
+
+        return self._redirigir("/admin")
 
     # ── login ────────────────────────────────────────────────────────────────
     def _login(self, ip):
@@ -377,15 +533,45 @@ def _admin_page(filas, empresa):
             acciones = (f'<form method="post" action="/admin/emitir">'
                         f'<input type="hidden" name="id" value="{f["Id"]}">'
                         f'<button class="btn mini">Emitir</button></form>')
+        # La foto se ve en miniatura para que el admin sepa a QUIÉN se la está
+        # poniendo: subir una foto y que salga la de otro es un error que solo
+        # se detecta en la ficha publicada.
+        if f.get("Foto"):
+            miniatura = (f'<img class="miniatura" src="{plantillas.esc(f["Foto"])}" '
+                         f'alt="" width="34" height="34">')
+        else:
+            iniciales = "".join(p[0] for p in (f.get("Nombre") or "").split()[:2])
+            miniatura = (f'<span class="miniatura vacia" aria-hidden="true">'
+                         f'{plantillas.esc(iniciales.upper() or "?")}</span>')
+
+        puesto = f.get("Puesto") or ""
+        editor = (
+            f'<form method="post" action="/admin/persona" '
+            f'enctype="multipart/form-data" class="editor">'
+            f'<input type="hidden" name="id" value="{f["Id"]}">'
+            f'<input type="text" name="puesto" placeholder="Puesto" '
+            f'value="{plantillas.esc(puesto)}">'
+            f'<label class="subir" title="Subir foto">'
+            f'<input type="file" name="foto" accept="image/*">'
+            f'<span>📷</span></label>'
+            + (f'<button class="btn mini peligro" name="accion_foto" '
+               f'value="borrar" title="Quitar la foto">✕</button>'
+               if f.get("Foto") else "")
+            + f'<button class="btn mini">Guardar</button>'
+            f'</form>')
+
         filas_html.append(
-            f'<tr><td>{plantillas.esc(f.get("Nombre"))}</td>'
+            f'<tr><td><span class="celda-usuario">{miniatura}'
+            f'<span>{plantillas.esc(f.get("Nombre"))}</span></span></td>'
             f'<td>{plantillas.esc(f.get("Email"))}</td>'
+            f'<td class="acciones">{editor}</td>'
             f'<td>{persona_activa}</td><td>{estado}</td>'
             f'<td>{plantillas.esc(f.get("NumAccesos") or 0)}</td>'
             f'<td class="acciones">{acciones}</td></tr>')
 
     cuerpo.append('<table class="tabla"><thead><tr>'
-                  '<th>Nombre</th><th>Correo</th><th>Usuario</th><th>Ficha</th>'
+                  '<th>Nombre</th><th>Correo</th><th>Foto / Puesto</th>'
+                  '<th>Usuario</th><th>Ficha</th>'
                   '<th>Accesos</th><th>Enlace</th></tr></thead><tbody>'
                   + "\n".join(filas_html) + '</tbody></table>')
 

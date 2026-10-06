@@ -395,3 +395,81 @@ input:focus {
 	outline: 2px solid var(--color-primary);
 	outline-offset: 1px;
 }
+
+/* ─── Panel: miniatura y editor de persona ────────────────────────────── */
+.celda-usuario {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+/* 34px y no --tap: es un indicador de "esta es su foto", no un botón. El
+   botón real de subir está al lado y sí cumple los 44px. */
+.miniatura {
+	width: 34px;
+	height: 34px;
+	border-radius: 50%;
+	object-fit: cover;
+	flex: 0 0 auto;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 12px;
+	font-weight: 700;
+	color: #0F172A;
+	background: var(--color-primary);
+	border: 1px solid var(--color-line);
+}
+
+.miniatura.vacia {
+	background: var(--color-surface-2);
+	color: var(--color-text-muted);
+}
+
+.editor {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	align-items: center;
+	min-width: 220px;
+}
+
+.editor input[type="text"] {
+	min-height: 32px;
+	padding: 4px 8px;
+	font-size: 13px;
+	flex: 1 1 110px;
+}
+
+/* El input file nativo muestra "C:\\fakepath\\foto.jpg" y ocupa 300px. Se
+   oculta y se pone un botón encima; el input sigue siendo el que se pulsa,
+   nada de JavaScript. */
+.subir {
+	position: relative;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 32px;
+	height: 32px;
+	border-radius: var(--radius-xs);
+	background: var(--color-surface-2);
+	border: 1px solid var(--color-line);
+	cursor: pointer;
+	font-size: 15px;
+	flex: 0 0 auto;
+}
+
+.subir input[type="file"] {
+	position: absolute;
+	inset: 0;
+	opacity: 0;
+	width: 100%;
+	height: 100%;
+	cursor: pointer;
+}
+
+.empresa-nombre {
+	color: var(--color-text-muted);
+	font-size: 14px;
+	margin: 2px 0 0;
+}

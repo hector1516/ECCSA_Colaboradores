@@ -20,7 +20,22 @@ import urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from panel import config, server  # noqa: E402
+from panel import server  # noqa: E402
+
+DATA_DIR_TEST = "/tmp/colab_test_data"
+
+
+class _SinRedirigir(urllib.request.HTTPRedirectHandler):
+    """Devuelve el 303 en vez de seguirlo.
+
+    Hace falta porque el login responde 303 → /admin, y urllib NO lleva cookies
+    entre redirecciones: al seguirla, /admin responde 401 y el test parece fallar
+    cuando lo que pasó es que la cookie se quedó en el primer response.
+    """
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+from panel import tokens as tokens_mod  # noqa: E402
 from panel.vcard import construir_vcard  # noqa: E402
 
 
@@ -119,11 +134,16 @@ class TestRutas(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        os.environ.setdefault("DATA_DIR", "/tmp/colab_test_data")
-        os.makedirs(os.environ["DATA_DIR"], exist_ok=True)
-        with open(os.path.join(os.environ["DATA_DIR"], "admin_secret.txt"),
+        os.makedirs(DATA_DIR_TEST, exist_ok=True)
+        with open(os.path.join(DATA_DIR_TEST, "admin_secret.txt"),
                   "w", encoding="utf-8") as fh:
             fh.write("secreto-de-prueba")
+
+        # config.SECRET_FILE se apunta al temporal ANTES de arrancar el
+        # servidor. Config lo resuelve al IMPORTAR (DATA se calcula en tiempo de
+        # módulo), así que poner la variable de entorno aquí ya no cambiaría
+        # nada: hay que reasignar la ruta directamente.
+        server.config.SECRET_FILE = os.path.join(DATA_DIR_TEST, "admin_secret.txt")
 
         # Ficha y empresa falsas: el objetivo es la respuesta HTTP.
         cls.ficha = {
@@ -131,7 +151,8 @@ class TestRutas(unittest.TestCase):
             "Etiqueta": "Hector Pena",
             "Creado": None, "NumAccesos": 0,
             "Nombre": "Hector Peña", "Email": "hector@ecc-sa.com.mx",
-            "Foto": "", "Telefono": "8181234567",
+            "Foto": "", "Puesto": "Técnico de campo",
+            "Telefono": "8181234567",
         }
         cls.empresa = {
             "colab_empresa_nombre": "ECCSA",
@@ -240,6 +261,78 @@ class TestRutas(unittest.TestCase):
         codigo, _, _ = self._get("/corto")
         self.assertEqual(codigo, 404)
 
+    def test_ficha_muestra_el_puesto(self):
+        """El puesto viene de HUB_Users.Puesto y va bajo el nombre."""
+        _, cuerpo, _ = self._get("/" + self.ficha["Slug"])
+        self.assertIn("Técnico de campo", cuerpo.decode("utf-8"))
+
+    def test_ficha_sin_foto_muestra_iniciales(self):
+        """Sin HUB_Users.Foto la tarjeta tiene que verse bien, no rota.
+
+        Las 11 filas de HUB_Users están hoy sin foto: es el estado por defecto,
+        no una excepción.
+        """
+        codigo, cuerpo, _ = self._get("/" + self.ficha["Slug"])
+        texto = cuerpo.decode("utf-8")
+        self.assertEqual(codigo, 200)
+        self.assertIn('class="avatar"', texto)
+        self.assertIn(">HP<", texto)
+        self.assertNotIn('class="foto"', texto)
+
+    def test_foto_que_rompe_el_html_se_escapa(self):
+        """Una Foto con HTML se escapa: si no, es XSS servido desde la BD."""
+        server.db.obtener_ficha = lambda slug: dict(
+            self.ficha, Foto='"><script>alert(1)</script>')
+        try:
+            _, cuerpo, _ = self._get("/" + self.ficha["Slug"])
+            texto = cuerpo.decode("utf-8")
+            self.assertNotIn("<script>alert(1)</script>", texto)
+            self.assertIn("&lt;script&gt;", texto)
+        finally:
+            server.db.obtener_ficha = lambda slug: (
+                self.ficha if slug == self.ficha["Slug"] else None)
+
+    def test_multipart_se_parsea(self):
+        """El parser de multipart es a mano; se prueba con un cuerpo de verdad."""
+        import uuid
+        limite = "----prueba" + uuid.uuid4().hex
+        cuerpo = (
+            f"--{limite}\r\n"
+            'Content-Disposition: form-data; name="id"\r\n\r\n'
+            "7\r\n"
+            f"--{limite}\r\n"
+            'Content-Disposition: form-data; name="puesto"\r\n\r\n'
+            "Jefe de campo\r\n"
+            f"--{limite}\r\n"
+            'Content-Disposition: form-data; name="foto"; filename="f.png"\r\n'
+            "Content-Type: image/png\r\n\r\n"
+        ).encode() + b"\x89PNG\r\n\x1a\nDATOS" + (
+            f"\r\n--{limite}--\r\n").encode()
+
+        abierto = server.Handler.__new__(server.Handler)
+        abierto.headers = {"Content-Length": str(len(cuerpo)),
+                           "Content-Type": f"multipart/form-data; boundary={limite}"}
+        abierto.rfile = io.BytesIO(cuerpo)
+
+        campos, ficheros = abierto._leer_multipart()
+        self.assertEqual(campos["id"], "7")
+        self.assertEqual(campos["puesto"], "Jefe de campo")
+        self.assertIn("foto", ficheros)
+        nombre, crudo, ctype = ficheros["foto"]
+        self.assertEqual(nombre, "f.png")
+        self.assertEqual(ctype, "image/png")
+        self.assertTrue(crudo.startswith(b"\x89PNG"))
+
+    def test_guardar_foto_rechaza_basura(self):
+        """Un data-URI que no sea imagen no se escribe en HUB_Users.Foto.
+
+        Sin esta validación, un data-URI con html dentro acabaría en el src de
+        la ficha y sería un XSS servido desde la base de datos.
+        """
+        self.assertFalse(tokens_mod.guardar_foto(999999, "no-es-data-uri"))
+        self.assertFalse(tokens_mod.guardar_foto(999999, "data:text/html;base64,PGgx"))
+        self.assertFalse(tokens_mod.guardar_foto(999999, "data:image/png;base64,!!!"))
+
     def test_404_no_distingue_inexistente_de_revocado(self):
         """Ambas respuestas deben ser idénticas: si difieren, se puede probar
         qué tokens existieron."""
@@ -250,6 +343,73 @@ class TestRutas(unittest.TestCase):
     def test_admin_exige_sesion(self):
         codigo, _, _ = self._get("/admin")
         self.assertEqual(codigo, 401)
+
+    def test_login_bueno_abre_el_panel(self):
+        """El camino feliz completo: login → cookie → /admin con contenido.
+
+        Este test faltaba cuando el login 'funcionaba' pero /admin devolvía 401:
+        la cookie llevaba un token aleatorio y la validación comparaba contra el
+        secreto del panel. Un suite sin el camino feliz no lo detecta.
+        """
+        import urllib.parse
+        datos = urllib.parse.urlencode(
+            {"secret": "secreto-de-prueba"}).encode()
+        req = urllib.request.Request(self.base + "/admin/login", data=datos,
+                                     method="POST")
+
+        opener = urllib.request.build_opener(_SinRedirigir)
+        try:
+            with opener.open(req, timeout=10) as r:
+                cookie = r.headers.get("Set-Cookie")
+                self.assertEqual(r.status, 303)
+        except urllib.error.HTTPError as e:
+            cookie = e.headers.get("Set-Cookie")
+        self.assertIsNotNone(cookie, "el login no devolvió cookie")
+        self.assertIn("HttpOnly", cookie)
+        self.assertIn("SameSite=Strict", cookie)
+
+        valor = cookie.split(";")[0]
+        req2 = urllib.request.Request(self.base + "/admin",
+                                      headers={"Cookie": valor})
+        with urllib.request.urlopen(req2, timeout=10) as r:
+            cuerpo = r.read().decode("utf-8")
+        self.assertEqual(r.status, 200)
+        self.assertIn("Datos de la empresa", cuerpo)
+
+    def test_logout_invalida_la_sesion(self):
+        """Con solo borrar la cookie, quien la copiara antes seguiría entrando."""
+        import urllib.parse
+        datos = urllib.parse.urlencode(
+            {"secret": "secreto-de-prueba"}).encode()
+        opener = urllib.request.build_opener(_SinRedirigir)
+        req = urllib.request.Request(self.base + "/admin/login", data=datos,
+                                     method="POST")
+        try:
+            cookie = opener.open(req, timeout=10).headers.get("Set-Cookie")
+        except urllib.error.HTTPError as e:
+            cookie = e.headers.get("Set-Cookie")
+        valor = cookie.split(";")[0]
+
+        req_logout = urllib.request.Request(self.base + "/admin/logout",
+                                            headers={"Cookie": valor},
+                                            data=b"", method="POST")
+        try:
+            opener.open(req_logout, timeout=10)
+        except urllib.error.HTTPError:
+            pass
+
+        # La MISMA cookie ya no vale.
+        req2 = urllib.request.Request(self.base + "/admin",
+                                      headers={"Cookie": valor})
+        try:
+            with urllib.request.urlopen(req2, timeout=10) as r:
+                self.fail(f"la sesión sobrevivió al logout: {r.status}")
+        except urllib.error.HTTPError as e:
+            self.assertEqual(e.code, 401)
+
+    def test_sesion_no_sobrevive_al_reinicio(self):
+        """Documenta que las sesiones viven en memoria, no en la BD."""
+        self.assertEqual(server.CADUCIDAD_SESION, 8 * 3600)
 
     def test_login_malo_no_entra(self):
         import urllib.parse

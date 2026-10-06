@@ -19,10 +19,14 @@ vCard, y meter Vite/FastAPI sería complejidad sin beneficio.
 
 ## Dónde vive cada dato
 
+**Todo se toma de `HUB_Users`** (menos el teléfono). Verificado contra
+producción y pruebas: las columnas existen, pero hoy están **vacías** las 11
+filas — la foto y el puesto se suben desde `/admin`.
+
 | Dato | Origen |
 |---|---|
-| Nombre, correo, **foto** | `HUB_Users` (la foto es base64 en `HUB_Users.Foto`, migración 0020) |
-| **Teléfono móvil** | `MAC.Telefono` — la MISMA fuente que usa HUB y Field (`get_user_phone`), para que no haya dos números distintos |
+| Nombre, correo, **foto**, **puesto** | `HUB_Users` — la foto es un data-URI en `HUB_Users.Foto` (migración 0020) y el puesto en `HUB_Users.Puesto`. Ambas columnas **ya existían** y el panel las escribe: cero migración nueva |
+| **Teléfono móvil** | `MAC.Telefono` — **NO** está en `HUB_Users`, que no tiene columna de teléfono. Es la misma fuente que usan HUB y Field (`get_user_phone`), para que no haya dos números distintos |
 | **Token de la URL**, accesos | `HUB_ColaboradorFicha` — tabla propia, migración `0057` en el repo **HUB** |
 | Dirección, redes, WhatsApp, coordenadas | `HUB_Config`, claves `colab_empresa_*` |
 
@@ -122,7 +126,7 @@ kiosco del Dashboard (§2b del contrato): `user` va en `null`.
   / Bot Fight / rate limiting. **Es la capa de seguridad principal.**
 - **Datos de la empresa**: las 8 claves `colab_empresa_*` están vacías a
   propósito; se llenan desde `/admin`.
-- **Foto del logo**: la ficha usa iniciales cuando el usuario no tiene foto en
-  `HUB_Users.Foto`.
+- **Datos de las personas**: `HUB_Users.Foto` y `HUB_Users.Puesto` están
+  vacías en las 11 filas; hay que subirlas desde `/admin`.
 - **Iconos PWA**: no hay manifest ni iconos (la app no se instala; se abre en
   el navegador desde la NFC).

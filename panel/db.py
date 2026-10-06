@@ -65,6 +65,7 @@ SELECT
     u.Nombre,
     u.Email,
     u.Foto,
+    u.Puesto,
     (
         SELECT TOP 1 LTRIM(RTRIM(m.Telefono))
         FROM   dbo.MAC m

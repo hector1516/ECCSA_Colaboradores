@@ -21,8 +21,15 @@ Primera versión.
   Sin doblar, algunos importadores cortan el campo y guardan el contacto sin
   foto, que es justo para lo que existe el botón.
 - **Panel privado** (`/admin`, `panel/tokens.py`) — emitir, revocar y reactivar
-  el token de cada usuario, y editar los 8 datos de la empresa. Detrás de un
-  secreto en el volumen; la app **no arranca** sin él.
+  el token de cada usuario, editar los 8 datos de la empresa, y **subir la foto
+  y el puesto de cada persona**. Detrás de un secreto en el volumen; la app
+  **no arranca** sin él.
+- **Foto y puesto de cada persona, desde el panel** (`panel/server.py`) —
+  escriben en `HUB_Users.Foto` y `HUB_Users.Puesto`, columnas que YA existían:
+  cero migración nueva. La foto se sube como fichero binario y se guarda como
+  data-URI, que es el formato que ya usa esa columna para el avatar del HUB.
+- **Parser de `multipart/form-data`** (`panel/server.py`) — a mano, porque
+  `cgi.FieldStorage` se eliminó de la biblioteca estándar en Python 3.13.
 - **Token aleatorio de 32 caracteres** (`panel/tokens.py`) — Crockford Base32,
   160 bits de entropía, con prefijo legible del nombre.
 - **Migración `0057_colaborador_ficha.sql`** (repo HUB) — tabla
@@ -33,6 +40,22 @@ Primera versión.
 - `AGENTS.md`, `deploy/app.conf`, `Dockerfile`, `static/changelog.json`.
 - Alta en `ECCSA-Shell` (`APPS`, `CANDIDATES`, `REPOS`, `CHANGELOG`) y
   propagación del shell v1.11.0 en variante `plain`.
+
+### Fixed
+
+- **La sesión del panel no funcionaba.** El login devolvía 303 y ponía cookie,
+  pero `/admin` respondía 401 siempre: la cookie llevaba un token aleatorio y la
+  validación la comparaba contra el *secreto* del panel. Ahora los tokens de
+  sesión viven en un conjunto en memoria (con caducidad de 8 h), el logout los
+  invalida de verdad, y hay test del camino feliz login → cookie → panel.
+- **`get_connection()`aba el nombre real.** `server._shell_state` se llamaba
+  como método de `Handler` cuando era una función suelta: reventaba con
+  `AttributeError` y `/api/shell/state` devolvía 500.
+- **`slugify` perdía la primera letra de los acentos.** `encode("ascii",
+  "ignore")` borra la letra acentuada en vez de convertirla: "ángel" salía
+  "ngel" y "pérez" salía "prez". Ahora se quitan solo los signos combinantes.
+- **El parser de multipart ignoraba el `Content-Type`** de la parte, así que
+  la imagen llegaba sin tipo y no se podía distinguir una foto de un HTML.
 
 ### Security
 
@@ -61,5 +84,8 @@ Primera versión.
   manual). Hasta entonces el token es lo único que protege las fichas.
 - Los 8 valores de `colab_empresa_*` están **vacíos**: se llenan desde `/admin`.
 - Sin manifest ni iconos PWA (la app no se instala; se abre en el navegador).
-- La foto de las fichas sale de `HUB_Users.Foto`; quien no tenga, muestra
-  iniciales.
+- `HUB_Users.Foto` y `HUB_Users.Puesto` están **vacías en las 11 filas de
+  `HUB_Users`** (verificado en producción y en pruebas). Hasta que se suban
+  desde `/admin`, las fichas muestran iniciales y sin puesto.
+- El teléfono sale de `MAC.Telefono`, NO de `HUB_Users`: es la única columna
+  con teléfonos de la base (22 renglones) y la misma que usan HUB y Field.
