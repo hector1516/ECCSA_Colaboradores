@@ -1,10 +1,11 @@
 {
-  "version": "0.3.4",
+  "version": "0.4.0",
   "fecha": "2026-10-06",
   "cambios": [
     "Toca la tarjeta NFC de un colaborador y abre su ficha: teléfono, correo y WhatsApp.",
     "La ficha muestra la foto real que el colaborador sube desde la app de Admon.",
     "Botón para guardar el contacto en el teléfono, con la foto.",
-    "La ficha muestra la dirección de la empresa y el botón para llegar en mapa."
+    "El botón «Cómo llegar» abre la ubicación de la empresa en Google Maps.",
+    "Enlaces a las redes sociales y al sitio web de la empresa."
   ]
 }

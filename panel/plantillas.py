@@ -71,18 +71,33 @@ def url_whatsapp(numero, mensaje=None):
     return url
 
 
-def url_mapa(lat, lon, direccion):
-    """Enlace de mapa: coordenadas si las hay, búsqueda por dirección si no.
+def url_mapa(lat, lon, direccion, enlace_corto=""):
+    """Enlace para abrir el mapa, o '' si no hay nada con qué abrirlo.
 
-    Se prefiere el link de búsqueda de Apple sobre el de Google porque en iPhone
-    abre la app Mapas nativa, que además tiene la empresa ya guardada de visita
-    anterior para varias personas del equipo.
+    Prioridad:
+      1. `colab_empresa_mapa_url` — el link corto de Google Maps. Es el mejor
+         porque abre la app NATIVA de mapas del móvil (Google Maps en Android,
+         Apple Maps en iOS si está instalada) y apunta al lugar EXACTO con su
+         ficha de negocio, no a una búsqueda por texto que puede caer en otro
+         punto de la calle.
+      2. Coordenadas → búsqueda de Google Maps.
+      3. Dirección → búsqueda de Google Maps por texto.
+
+    Antes se usaba `maps.apple.com`, que en Android manda a una página web
+    dentro del navegador en vez de a la app de mapas.
+
+    El link corto se deja tal cual, sin reescribirlo a `google.com/maps/search`:
+    perdería el redireccionado que decide qué app abre.
     """
+    if enlace_corto:
+        return enlace_corto if enlace_corto.startswith("http") \
+            else "https://" + enlace_corto
     if lat and lon:
-        return (f"https://maps.apple.com/?q={urllib.parse.quote(str(lat))},"
-                f"{urllib.parse.quote(str(lon))}")
+        return ("https://www.google.com/maps/search/?api=1&query="
+                + urllib.parse.quote(f"{lat},{lon}"))
     if direccion:
-        return "https://maps.apple.com/?q=" + urllib.parse.quote(direccion)
+        return ("https://www.google.com/maps/search/?api=1&query="
+                + urllib.parse.quote(direccion))
     return ""
 
 
@@ -162,7 +177,8 @@ def ficha_page(ficha, empresa):
 
     wa = url_whatsapp(empresa.get("colab_empresa_whatsapp") or telefono,
                       f"Hola, te escribo de parte de {nombre}.")
-    mapa = url_mapa(lat, lon, direccion)
+    mapa = url_mapa(lat, lon, direccion,
+                    (empresa.get("colab_empresa_mapa_url") or "").strip())
     sitio = (empresa.get("colab_empresa_sitio") or "").strip()
     if sitio and not sitio.startswith("http"):
         sitio = "https://" + sitio

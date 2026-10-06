@@ -6,6 +6,38 @@ Todos los cambios de esta app. Formato: qué cambió, en qué archivos y por qu�
 - `migrations/0057…` → migración de esquema (vive en el repo **HUB**)
 - `deploy/app.conf` → definición del contenedor en WebbApps
 
+## 0.4.0 — 2026-10-06
+
+### Changed
+
+- **"Cómo llegar" abre Google Maps** (`panel/plantillas.py:url_mapa`).
+  Antes usaba `maps.apple.com`, que en Android manda a una página web dentro del
+  navegador en vez de a la app de mapas. Ahora:
+    1. usa `colab_empresa_mapa_url`, el link corto al lugar exacto
+       (`https://maps.app.goo.gl/68aD2DRKH31VSFd97`, migración `0061`), que abre
+       la app nativa del móvil y apunta al negocio ya verificado por Google, con
+       su ficha y sus horarios, en vez de a una búsqueda por texto que puede caer
+       en otro punto de la calle;
+    2. si no hay link, cae a las coordenadas en Google Maps;
+    3. y si tampoco, a la búsqueda por dirección.
+
+  El link corto se deja TAL CUAL, sin reescribirlo a `google.com/maps/search`:
+  al reescribirlo se pierde el redireccionado que decide qué app se abre.
+
+  Las coordenadas exactas (25.6621268, -100.2820189) salieron de resolver el
+  propio enlace, que redirige a `place/ECCSA+Automation/@25.6621268,-100.2820189`.
+
+### Added
+
+- Clave `colab_empresa_mapa_url` en `HUB_Config` y en el panel (migración
+  `0061`), editable sin redesplegar.
+
+### Tests
+
+48 → 50. Los nuevos comprueban que el link corto tiene prioridad, que se
+normaliza si le falta el `https`, que el respaldo va a Google Maps y que no
+vuelve a aparecer `maps.apple.com` en ningún caso.
+
 ## 0.3.4 — 2026-10-06
 
 ### Changed

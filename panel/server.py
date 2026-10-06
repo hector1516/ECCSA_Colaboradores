@@ -159,7 +159,7 @@ def cerrar_sesion(cookie):
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "ECCSA_Colaboradores/0.3.4"
+    server_version = "ECCSA_Colaboradores/0.4.0"
 
     # El log por defecto escribe una línea por petición CON la ruta completa, y
     # la ruta ES el token. Los tokens acabarían en el log del contenedor, que
@@ -503,6 +503,7 @@ def _admin_page(filas, empresa):
                   + campo("colab_empresa_facebook", "Facebook")
                   + campo("colab_empresa_instagram", "Instagram")
                   + campo("colab_empresa_sitio", "Sitio web")
+                  + campo("colab_empresa_mapa_url", "Enlace de Google Maps")
                   + campo("colab_empresa_latitud", "Latitud", "text")
                   + campo("colab_empresa_longitud", "Longitud", "text")
                   + '<button class="btn">Guardar</button></form>')

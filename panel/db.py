@@ -150,6 +150,7 @@ def obtener_empresa():
         "colab_empresa_instagram",
         "colab_empresa_latitud",
         "colab_empresa_longitud",
+        "colab_empresa_mapa_url",
     )
     conn = None
     out = {k: "" for k in claves}

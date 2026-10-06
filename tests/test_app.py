@@ -66,12 +66,36 @@ class TestHelpers(unittest.TestCase):
         self.assertEqual(url_whatsapp(""), "")
         self.assertEqual(url_whatsapp("123"), "")
 
-    def test_mapa_prefiere_coordenadas(self):
+    def test_mapa_prefiere_el_link_corto(self):
+        """El link corto de Google abre la app de mapas del móvil.
+
+        Y es el lugar EXACTO verificado por Google, no una búsqueda por texto
+        que puede caer en otro punto de la calle.
+        """
         from panel.plantillas import url_mapa
-        self.assertIn("25.67,-100.28", url_mapa("25.67", "-100.28", "Monterrey"))
+        corto = "https://maps.app.goo.gl/68aD2DRKH31VSFd97"
+        self.assertEqual(url_mapa("25.66", "-100.28", "Monterrey", corto), corto)
+        # Sin https delante lo normaliza, para que un valor mal pegado en el
+        # panel no rompa el boton.
+        self.assertEqual(url_mapa("", "", "", "maps.app.goo.gl/abc"),
+                         "https://maps.app.goo.gl/abc")
+
+    def test_mapa_sin_link_usa_coordenadas(self):
+        from panel.plantillas import url_mapa
+        con = url_mapa("25.67", "-100.28", "Monterrey")
+        self.assertIn("google.com/maps", con)
+        self.assertIn("25.67%2C-100.28", con)
         # Sin coordenadas cae a la búsqueda por dirección.
         self.assertIn("Monterrey", url_mapa("", "", "Monterrey"))
         self.assertEqual(url_mapa("", "", ""), "")
+
+    def test_mapa_ya_no_usa_apple_maps(self):
+        """maps.apple.com mandaba a una web dentro del navegador en Android."""
+        from panel.plantillas import url_mapa
+        for enlace in (url_mapa("25.67", "-100.28", "x"),
+                       url_mapa("", "", "x"),
+                       url_mapa("", "", "", "https://maps.app.goo.gl/a")):
+            self.assertNotIn("apple.com", enlace)
 
     def test_redes_aceptan_usuario_o_url(self):
         from panel.plantillas import url_facebook, url_instagram
@@ -194,6 +218,7 @@ class TestRutas(unittest.TestCase):
             "colab_empresa_latitud": "25.67",
             "colab_empresa_longitud": "-100.28",
             "colab_empresa_sitio": "www.ecc-sa.com.mx",
+            "colab_empresa_mapa_url": "https://maps.app.goo.gl/68aD2DRKH31VSFd97",
         }
         server.db.obtener_persona = lambda id_usuario: (
             cls.ficha if id_usuario == 1 else None)
@@ -269,7 +294,8 @@ class TestRutas(unittest.TestCase):
         texto = cuerpo.decode("utf-8")
         for esperado in ("Hector Peña", "hector@ecc-sa.com.mx", "Guardar contacto",
                          "WhatsApp", "Cómo llegar", "wa.me/528181234567",
-                         "facebook.com/eccsa", "instagram.com/eccsa"):
+                         "facebook.com/eccsa", "instagram.com/eccsa",
+                         "maps.app.goo.gl/68aD2DRKH31VSFd97"):
             self.assertIn(esperado, texto, f"falta {esperado}")
         # El CSS del shell va inline (la tarjeta NFC puede abrir sin datos).
         self.assertIn("--color-primary", texto)
