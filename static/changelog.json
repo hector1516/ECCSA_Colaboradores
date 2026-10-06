@@ -1,0 +1,10 @@
+{
+  "version": "0.1.0",
+  "fecha": "2026-10-06",
+  "cambios": [
+    "Toca la tarjeta NFC de un colaborador y abre su ficha: teléfono, correo y WhatsApp.",
+    "Botón para guardar el contacto en el teléfono, con la foto.",
+    "La ficha muestra la dirección de la empresa y el botón para llegar en mapa.",
+    "Enlaces a las redes sociales de la empresa."
+  ]
+}

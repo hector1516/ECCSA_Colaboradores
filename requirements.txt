@@ -1,0 +1,21 @@
+# ECCSA_Colaboradores — dependencias
+# ============================================================================
+# App mínima y SIN framework: el servidor es `http.server` de la biblioteca
+# estándar, así que lo único que se instala de verdad es el driver de la BD.
+#
+# VERSIONES: manda Field (ECCSA-Shell/versiones/requisitos-canonicos.txt). Las
+# apps leen y escriben las MISMAS tablas de ECCSA_Admon, así que la versión del
+# driver tiene que ser idéntica en las tres o un INSERT se comporta distinto
+# según dónde corra. Si Field la sube, se actualiza aquí primero y se verifica
+# con `python ECCSA-Shell/tools/check_versiones.py`.
+#
+# Python base: 3.11 (las 3 imágenes del ecosistema)
+# ============================================================================
+
+# --- Datos (mandato: Field) --------------------------------------------------
+pymssql==2.2.11
+
+# --- Zonas horarias (mandato) -------------------------------------------------
+# Se usa para mostrar "la última vez que se abrió esta tarjeta" en hora de
+# México y no en UTC del servidor.
+pytz

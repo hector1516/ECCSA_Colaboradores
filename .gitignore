@@ -1,0 +1,15 @@
+# Credenciales: NUNCA se suben (ver AGENTS.md).
+secretos_local.py
+.env
+*.env
+deploy/env.local
+
+# El secreto del panel vive en el volumen, no en el repo.
+admin_secret.txt
+data/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
