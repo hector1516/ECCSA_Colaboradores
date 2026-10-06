@@ -160,7 +160,7 @@ def cerrar_sesion(cookie):
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "ECCSA_Colaboradores/0.1.1"
+    server_version = "ECCSA_Colaboradores/0.1.2"
 
     # El log por defecto escribe una línea por petición CON la ruta completa, y
     # la ruta ES el token. Los tokens acabarían en el log del contenedor, que
@@ -173,7 +173,11 @@ class Handler(BaseHTTPRequestHandler):
         print(f"[http] {metodo} {codigo} ip={ip} {detalle}", flush=True)
 
     # ── respuestas ───────────────────────────────────────────────────────────
-    def _enviar(self, codigo, cuerpo, ctype="text/html; charset=utf-8", extra=None):
+    def _enviar(self, codigo, cuerpo, ctype="text/html; charset=utf-8", extra=None,
+                detalle="", con_log=True):
+        """Responde y deja traza. El `detalle` es para la ruta, nunca el token."""
+        if con_log:
+            self._log(self.command, codigo, self._ip_para_log(), detalle)
         datos = cuerpo if isinstance(cuerpo, bytes) else cuerpo.encode("utf-8")
         cabeceras = [
             ("Content-Type", ctype),
@@ -207,6 +211,17 @@ class Handler(BaseHTTPRequestHandler):
 
     def _error(self, codigo, ip, detalle=""):
         self._log(self.command, codigo, ip, detalle)
+
+    def _ip_para_log(self):
+        """IP real del cliente, tal como la ve la app.
+
+        Importa por el rate limit: detrás de cloudflared TODO el tráfico de
+        internet llega desde el mismo proxy. Si se contara por la IP del socket,
+        el contador sería GLOBAL y el primero que exceediera 40/minuto dejaría
+        sin servicio a todos los demás. `lugar_de` toma la primera entrada de
+        X-Forwarded-For, que es el cliente original.
+        """
+        return lugar_de(self.headers, self.client_address[0])[1]
 
     def _cookies(self):
         cruda = self.headers.get("Cookie") or ""
@@ -287,6 +302,7 @@ class Handler(BaseHTTPRequestHandler):
 
     # ── GET ───────────────────────────────────────────────────────────────────
     def do_GET(self):
+        # La ruta NUNCA se pasa a _enviar: la ruta ES el token.
         ip = lugar_de(self.headers, self.client_address[0])[1]
         ruta = urllib.parse.urlparse(self.path).path
 
@@ -309,7 +325,8 @@ class Handler(BaseHTTPRequestHandler):
 
         if not RATE.permitido(ip):
             return self._enviar(429, _error_page("Demasiadas peticiones"),
-                                extra=[("Retry-After", "60")])
+                                extra=[("Retry-After", "60")],
+                                detalle="rate-limit")
 
         if ruta == "/admin":
             return self._admin()
@@ -327,11 +344,13 @@ class Handler(BaseHTTPRequestHandler):
         slug = partes[0]
         if not tokens.slug_valido(slug):
             # No se distingue "slug con forma rara" de "no existe": mismo 404.
-            return self._enviar(404, _error_page())
+            return self._enviar(404, _error_page(), detalle="slug-invalido")
 
         ficha = db.obtener_ficha(slug)
         if not ficha:
-            return self._enviar(404, _error_page())
+            # Un 404 aquí es la señal más útil del log: si de repente hay
+            # muchos desde la misma IP, alguien está barriendo tokens.
+            return self._enviar(404, _error_page(), detalle="slug-no-existe")
 
         db.registrar_acceso(slug)
         ip_real = ficha.get("_ip") or ip

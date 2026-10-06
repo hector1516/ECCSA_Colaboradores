@@ -11,7 +11,7 @@ APP_ID = "colaboradores"
 APP_NAME = "Colaboradores"
 # Versión de la app. Fuente ÚNICA: el banner la lee de aquí y el CHANGELOG la
 # tiene que repetir — tools/check_changelog.py falla si no coinciden.
-APP_VERSION = "0.1.1"
+APP_VERSION = "0.1.2"
 
 # Puerto interno del contenedor. El host lo mapea en /opt/apps/colaboradores/app.conf.
 PORT = int(os.environ.get("PORT", "8000"))
@@ -70,8 +70,14 @@ def shell_version():
 # gigante y lo compare contra el índice.
 MAX_SLUG_LEN = 64
 
-# Intentos por IP por ventana. No es la defensa principal (esa es el WAF de
-# Cloudflare, que filtra antes de llegar aquí) sino el freno local para cuando
-# el WAF no está puesto o se salta.
-MAX_INTENTOS_POR_VENTANA = 40
+# La ficha pública la abre UNA persona, un par de veces: 60/min es de sobra y
+# deja margen para un grupo grande detrás de la MISMA IP de NAT (la oficina
+# entera comparte una salida a internet; sin X-Forwarded-For, todos
+# compartirían el mismo contador).
+#
+# El freno fuerte NO es este número: es el WAF de Cloudflare (§3 del manual),
+# que filtra antes de que la petición llegue al contenedor y ve la IP real sin
+# pasar por el proxy. Este límite es la red de seguridad para cuando el WAF no
+# está puesto o se salta.
+MAX_INTENTOS_POR_VENTANA = 60
 VENTANA_SEGUNDOS = 60

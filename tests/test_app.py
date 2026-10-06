@@ -11,6 +11,7 @@ import base64
 import contextlib
 import io
 import json
+import time
 import os
 import sys
 import threading
@@ -332,6 +333,71 @@ class TestRutas(unittest.TestCase):
         self.assertFalse(tokens_mod.guardar_foto(999999, "no-es-data-uri"))
         self.assertFalse(tokens_mod.guardar_foto(999999, "data:text/html;base64,PGgx"))
         self.assertFalse(tokens_mod.guardar_foto(999999, "data:image/png;base64,!!!"))
+
+    def test_la_ip_real_viene_de_cloudflare(self):
+        """Detrás de cloudflared, la IP del socket es SIEMPRE la misma.
+
+        Por eso el rate limit tiene que contar por X-Forwarded-For. Si contara
+        por el socket, el contador sería global y la primera persona que pasara
+        el límite dejaría sin servicio a todos los demás.
+        """
+        codigo, _, _ = self._get("/" + self.ficha["Slug"],
+                                 {"X-Forwarded-For": "201.77.44.9, 10.0.0.1"})
+        self.assertEqual(codigo, 200)
+
+    def test_xff_toma_la_primera_entrada(self):
+        """La primera entrada del XFF es el cliente original.
+
+        Las siguientes son los proxies que agregó cada salto (aquí, el puente de
+        Docker). Tomar la última haría que todo se atribuira al proxy.
+        """
+        from panel.lugar import lugar_de
+        modo, ip = lugar_de({"X-Forwarded-For": "201.77.44.9, 10.0.0.1"}, "172.17.0.1")
+        self.assertEqual(ip, "201.77.44.9")
+        # IP pública = remoto.
+        self.assertEqual(modo, "remoto")
+
+    def test_cada_ip_tiene_su_propio_contador(self):
+        """Dos IPs distintas no comparten el límite.
+
+        Es el caso de la oficina detrás de NAT con el WAF sin XFF, y el que
+        rompería la app si el contador fuera global.
+        """
+        limite = server.RateLimit(maximo=3, ventana=60)
+        for _ in range(3):
+            self.assertTrue(limite.permitido("1.1.1.1"))
+        self.assertFalse(limite.permitido("1.1.1.1"))
+        # Otra IP sigue teniendo su presupuesto entero.
+        self.assertTrue(limite.permitido("2.2.2.2"))
+        self.assertTrue(limite.permitido("2.2.2.2"))
+        self.assertTrue(limite.permitido("2.2.2.2"))
+        self.assertFalse(limite.permitido("2.2.2.2"))
+
+    def test_la_ventana_se_renueva(self):
+        """Pasada la ventana, la IP vuelve a tener presupuesto."""
+        limite = server.RateLimit(maximo=2, ventana=1)
+        self.assertTrue(limite.permitido("3.3.3.3"))
+        self.assertTrue(limite.permitido("3.3.3.3"))
+        self.assertFalse(limite.permitido("3.3.3.3"))
+        time.sleep(1.2)
+        self.assertTrue(limite.permitido("3.3.3.3"))
+
+    def test_el_log_registra_la_peticion(self):
+        """El log debe existir: sin él no se puede ver un barrido de tokens.
+
+        Regresión: _log() estaba definida pero nunca se llamaba, así que el
+        contenedor no registraba NADA y no había forma de saber qué IP veía la
+        app detrás de Cloudflare.
+        """
+        capturado = io.StringIO()
+        with contextlib.redirect_stdout(capturado):
+            self._get("/" + self.ficha["Slug"])
+            self._get("/nadie-aqui-" + "B" * 32)
+        salida = capturado.getvalue()
+        self.assertIn("200", salida)
+        self.assertIn("slug-no-existe", salida)
+        # Y NUNCA el token.
+        self.assertNotIn(self.ficha["Slug"], salida)
 
     def test_404_no_distingue_inexistente_de_revocado(self):
         """Ambas respuestas deben ser idénticas: si difieren, se puede probar

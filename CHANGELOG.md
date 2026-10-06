@@ -6,9 +6,30 @@ Todos los cambios de esta app. Formato: qué cambió, en qué archivos y por qu�
 - `migrations/0057…` → migración de esquema (vive en el repo **HUB**)
 - `deploy/app.conf` → definición del contenedor en WebbApps
 
-## 0.1.1 — 2026-10-06
+## 0.1.2 — 2026-10-06
 
-Primera versión, con la sesión del panel corregida (ver *Fixed*).
+Primera versión pública (ya está en `colaboradores.ecc-sa.com.mx`).
+
+### Fixed
+
+- **El log del contenedor estaba vacío.** `_log()` estaba definida pero no se
+  llamaba en ninguna ruta: la app no registraba ni una petición. Sin traza no
+  hay forma de ver un barrido de tokens ni de saber qué IP ve la app detrás de
+  Cloudflare. Ahora `_enviar()` deja traza del método, el código, la IP y el
+  motivo (nunca la ruta, que es el token).
+
+### Changed
+
+- Rate limit de 40 a **60 peticiones por minuto** por IP. Medido en producción:
+  a 40, un barrido de 50 requests dejó bloqueada también a la persona legítima
+  que estaba usando el sitio. 60 deja margen para la oficina entera detrás de
+  NAT sin abrirle la puerta a un escáner (que sí lo frena el WAF de Cloudflare,
+  que ve la IP real sin pasar por el proxy).
+
+### Verified
+
+- Ficha pública, vCard, 404 indistinguible, `robots.txt` bloqueando todo y
+  `noindex`: comprobado por el dominio público, no solo en local.
 
 ### Added
 
