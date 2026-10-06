@@ -139,13 +139,26 @@ body.ficha {
 	margin: 0;
 }
 
-/* ─── Botones de acción ─────────────────────────────────────────────────── */
+/* ─── Botones de acción ─────────────────────────────────────────────────────
+   `auto-fit` + `minmax()` en vez de `1fr 1fr` fijo: la rejilla se ajusta sola
+   al ancho que hay y al número de botones que existen.
+
+   Antes eran 2 columnas SIEMPRE, y en dos casos concretos se rompía:
+     · Con 5 botones (cuando la persona no tiene teléfono y no hay WhatsApp)
+       quedaba una fila huérfana con un solo botón, más estrecho que el resto.
+     · Con 3 botones quedaba un hueco vacío que rompía la simetría.
+
+   Con `minmax(140px, 1fr)` + `auto-fit`:
+     · 320 px de ancho  -> 2 columnas (el mínimo cabe justo)
+     · ~420 px          -> 2 columnas, con aire
+     · 560 px o más     -> 3 o 4 columnas, según quantas quepan
+   Es la misma técnica que usa `.module-grid` del shell, pero aquí el piso es
+   140 px y no 1fr porque los botones llevan texto ("Guardar contacto") y con
+   `1fr` se aprietan hasta partir la etiqueta.
+*/
 .acciones {
 	display: grid;
-	/* 2 columnas: los 4 botones hacen una rejilla 2×2 que se lee de un vistazo.
-	   Con una sola columna, "Guardar contacto" (el más importante) queda abajo
-	   del pliegue en un móvil chico. */
-	grid-template-columns: 1fr 1fr;
+	grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
 	gap: 10px;
 	margin-bottom: 22px;
 }
@@ -156,7 +169,10 @@ body.ficha {
 	align-items: center;
 	justify-content: center;
 	gap: 6px;
+	/* min-height por el objetivo táctil (44px); min-width 0 para que una
+	   etiqueta larga pueda partirse en vez de desbordar la celda. */
 	min-height: var(--tap);
+	min-width: 0;
 	padding: 14px 8px;
 	background: var(--color-surface-2);
 	border: 1px solid var(--color-line);
@@ -166,17 +182,10 @@ body.ficha {
 	font-size: 13px;
 	font-weight: 600;
 	text-align: center;
+	/* La etiqueta larga ("Guardar contacto") se parte en dos líneas en vez de
+	   empujar el botón. */
+	overflow-wrap: anywhere;
 	transition: transform .12s ease, background .12s ease;
-}
-
-.accion:active {
-	transform: scale(.97);
-	background: var(--color-bg);
-}
-
-.accion .icono {
-	font-size: 22px;
-	line-height: 1;
 }
 
 .accion.principal {

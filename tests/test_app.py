@@ -66,6 +66,27 @@ class TestHelpers(unittest.TestCase):
         self.assertEqual(url_whatsapp(""), "")
         self.assertEqual(url_whatsapp("123"), "")
 
+    def test_los_botones_se_autoajustan(self):
+        """`auto-fit` + `minmax()` en vez de columnas fijas.
+
+        Con `1fr 1fr` fijo, un número impar de botones dejaba una fila huérfana
+        con un botón más estrecho que los demás, y un hueco vacío. Con
+        `auto-fit` la rejilla se acomoda sola al ancho y a cuántos botones haya.
+        """
+        import os
+
+        css = open(os.path.join(os.path.dirname(os.path.dirname(
+            os.path.abspath(__file__))), "panel", "ficha.css"),
+            encoding="utf-8").read()
+        self.assertIn("repeat(auto-fit, minmax(140px, 1fr))", css)
+        # Se mira DENTRO del bloque .acciones, no en todo el archivo: el
+        # formulario de empresa del panel sí lleva 1fr 1fr fijo y es correcto.
+        bloque = css.split(".acciones {", 1)[1].split("}", 1)[0]
+        self.assertNotIn("1fr 1fr", bloque,
+                         "los botones volvieron a columnas fijas")
+        # Y las etiquetas largas tienen que poder partirse, no desbordar.
+        self.assertIn("overflow-wrap: anywhere;", css)
+
     def test_mapa_prefiere_el_link_corto(self):
         """El link corto de Google abre la app de mapas del móvil.
 

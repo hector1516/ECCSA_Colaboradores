@@ -6,6 +6,27 @@ Todos los cambios de esta app. Formato: qué cambió, en qué archivos y por qu�
 - `migrations/0057…` → migración de esquema (vive en el repo **HUB**)
 - `deploy/app.conf` → definición del contenedor en WebbApps
 
+## 0.4.1 — 2026-10-06
+
+### Changed
+
+- **Los botones se autoajustan** (`panel/ficha.css`): `repeat(auto-fit,
+  minmax(140px, 1fr))` en vez de `1fr 1fr` fijo. La rejilla se acomoda sola al
+  ancho de la pantalla y a cuántos botones haya:
+    · 320 px -> 2 columnas
+    · 420 px -> 2 columnas con aire
+    · 560 px o más -> 3 o 4 columnas
+
+  Con las columnas fijas, un número impar de botones dejaba una fila huérfana
+  con un botón más estrecho que los demás, o un hueco vacío. Las etiquetas
+  largas ("Guardar contacto") ahora pueden partirse en dos líneas en vez de
+  desbordar la celda (`overflow-wrap: anywhere` + `min-width: 0`).
+
+### Tests
+
+50 → 51. El nuevo mira el bloque `.acciones` y no todo el archivo, porque el
+formulario de empresa del panel sí lleva `1fr 1fr` fijo y ahí sí es correcto.
+
 ## 0.4.0 — 2026-10-06
 
 ### Changed
