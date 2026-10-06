@@ -11,7 +11,7 @@ APP_ID = "colaboradores"
 APP_NAME = "Colaboradores"
 # Versión de la app. Fuente ÚNICA: el banner la lee de aquí y el CHANGELOG la
 # tiene que repetir — tools/check_changelog.py falla si no coinciden.
-APP_VERSION = "0.2.0"
+APP_VERSION = "0.3.0"
 
 # Puerto interno del contenedor. El host lo mapea en /opt/apps/colaboradores/app.conf.
 PORT = int(os.environ.get("PORT", "8000"))
@@ -65,9 +65,23 @@ def admin_secret():
 def ficha_secreto():
     """Secreto de derivación de los tokens, o '' si no existe.
 
-    Vacío significa que la app no puede generar ningún token. Es preferible a
-    arrancar con un secreto inventado: los tokens saldrían predecibles.
+    Se lee de `HUB_Config` (clave `colab_ficha_secreto`) y NO del archivo del
+    volumen, porque Admon tiene que calcular el MISMO token para poder mostrar
+    el enlace de cada persona en "Administración de usuarios". Con el secreto
+    solo en el volumen, Admon no podría derivarlo y habría que preguntarle a
+    esta app por red — con su propio secreto de autenticación y caída si esta
+    app no está arriba.
+
+    El archivo del volumen queda como RESPALDO para un despliegue que llegue
+    antes que la migración `0060`: sin él, ninguna ficha tendría token.
     """
+    try:
+        from panel import db as _db
+        valor = _db.obtener_config("colab_ficha_secreto")
+        if valor:
+            return valor
+    except Exception:
+        pass
     try:
         with open(FICHA_SECRET_FILE, encoding="utf-8") as fh:
             return fh.read().strip()

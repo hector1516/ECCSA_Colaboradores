@@ -112,6 +112,25 @@ def obtener_persona(id_usuario):
                 pass
 
 
+def obtener_config(clave):
+    """Un valor suelto de `HUB_Config`, o '' si no existe o falla la BD.
+
+    Se usa para leer el secreto de derivación de los tokens. Que viva en
+    HUB_Config y no en un archivo del contenedor es lo que permite que Admon
+    calcule el mismo enlace (misma derivación, mismo secreto compartido).
+    """
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT Valor FROM dbo.HUB_Config WHERE Clave = %s", (clave,))
+        fila = cur.fetchone()
+        conn.close()
+        return ((fila[0] or "").strip() if fila else "")
+    except Exception as exc:
+        print(f"[db] error leyendo config {clave}: {exc}", file=sys.stderr)
+        return ""
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Datos de la empresa (HUB_Config)
 # ─────────────────────────────────────────────────────────────────────────────

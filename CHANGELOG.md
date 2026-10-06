@@ -6,6 +6,45 @@ Todos los cambios de esta app. Formato: qué cambió, en qué archivos y por qu�
 - `migrations/0057…` → migración de esquema (vive en el repo **HUB**)
 - `deploy/app.conf` → definición del contenedor en WebbApps
 
+## 0.3.0 — 2026-10-06
+
+La ficha se ve como una tarjeta de presentación de verdad.
+
+### Changed
+
+- **La foto pasa de 120 px a `clamp(132px, 40vw, 210px)`** (`panel/ficha.css`).
+  120 px es del tamaño de un icono de WhatsApp: la cara de la persona se veía
+  diminuta y no cumplía su función, que es reconocer a quién tienes enfrente.
+  El `clamp` tiene suelo y tope porque en un móvil de 320 px un tamaño en `vw`
+  se iría de la pantalla, y en una tablet un 40 vw sería un cartel.
+- `object-position: 50% 28%`: las fotos de `HUB_UsuariosFotos` son verticales de
+  celular, y con el recorte al centro la cara salía cortada por arriba.
+
+### Added
+
+- **Animaciones, todas CSS puro y sin JavaScript** (`panel/ficha.css`):
+  entrada escalonada en cascada (`--i` por elemento), anillo cónico girando
+  alrededor de la foto, sombra que respira, fondo de aurora en 18 s, "latido"
+  del botón Llamar y brillo que recorre los botones al tocarlos.
+  Sin JS a propósito: la ficha se abre con un dedo pegado a una tarjeta NFC y
+  tiene que verse igual aunque el JS tarde o falle.
+- `@property --rotate`, que es lo que permite animar el ángulo del anillo: las
+  variables CSS no son animables por defecto y sin esto el degradado no gira.
+- **`prefers-reduced-motion`**: con "reducir animaciones" activado se apaga
+  TODO. No es decoración: una persona con desórdenes vestibulares ve un fondo en
+  movimiento y se marea.
+- **`panel/engrane.png`** y su ruta `GET /engrane.png`. El CSS del shell lo pide
+  con `url('/engrane.png')` y el archivo no existía en esta app, así que era un
+  404 en cada visita. `shell.css` es copia canónica y no se edita: lo que se
+  hizo fue generar el archivo y servirlo.
+- Estilo para móvil en horizontal (foto achicada, porque si no no cabe).
+
+### Tests
+
+40 → 44. Los nuevos comprueban que la ficha no lleva JS, que la foto sigue
+dimensionada con `clamp()`, que `prefers-reduced-motion` apaga todo y que la
+textura de fondo se sirve.
+
 ## 0.2.0 — 2026-10-06
 
 **Reescritura de dónde salen los datos.** Todo se lee de `HUB_Users` y de las

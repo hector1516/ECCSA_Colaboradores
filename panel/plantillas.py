@@ -202,6 +202,11 @@ def ficha_page(ficha, empresa):
         acciones.append(
             f'<a class="accion" href="{esc(mapa)}" target="_blank" rel="noopener">'
             f'<span classico>📍</span><span>Cómo llegar</span></a>')
+    # `--i` es el retardo escalonado de la animación de entrada (ver ficha.css).
+    # Sin esto todo saldría a la vez y se pierde el efecto de cascada.
+    for i, a in enumerate(acciones):
+        acciones[i] = a.replace('<a class="accion',
+                                f'<a style="--i:{i}" class="accion')
     acciones_html = "\n".join(acciones)
 
     # ── Datos de contacto ──
@@ -227,14 +232,14 @@ def ficha_page(ficha, empresa):
     # ── Redes ──
     redes = []
     if fb:
-        redes.append(f'<a class="red" href="{esc(fb)}" target="_blank" rel="noopener" '
-                     f'aria-label="Facebook">f</a>')
+        redes.append(f'<a style="--i:0" class="red" href="{esc(fb)}" '
+                     f'target="_blank" rel="noopener" aria-label="Facebook">f</a>')
     if ig:
-        redes.append(f'<a class="red ig" href="{esc(ig)}" target="_blank" rel="noopener" '
-                     f'aria-label="Instagram">ig</a>')
+        redes.append(f'<a style="--i:1" class="red ig" href="{esc(ig)}" '
+                     f'target="_blank" rel="noopener" aria-label="Instagram">ig</a>')
     if sitio:
-        redes.append(f'<a class="red web" href="{esc(sitio)}" target="_blank" '
-                     f'rel="noopener" aria-label="Sitio web">🌐</a>')
+        redes.append(f'<a style="--i:2" class="red web" href="{esc(sitio)}" '
+                     f'target="_blank" rel="noopener" aria-label="Sitio web">🌐</a>')
     redes_html = ("\n".join(redes)
                   if redes else '<span class="sin-redes">Sin redes configuradas</span>')
 
@@ -254,14 +259,17 @@ def ficha_page(ficha, empresa):
                 robots=True)
         + '<body class="ficha">\n'
         + '<main class="tarjeta">\n'
-        + f'  <div class="identidad">{identidad}'
+        # Los retardos escalonados (0…4) van en el HTML porque la animación es
+        # CSS puro: sin JavaScript, `--i` es la única forma de escalonar.
+        + f'  <div class="identidad anima" style="--i:0">{identidad}'
         + f'<h1 class="nombre">{esc(nombre)}</h1>'
         + (f'<p class="puesto">{esc(puesto)}</p>' if puesto else "")
         + (f'<p class="empresa-nombre">{esc(nombre_empresa)}</p>'
            if nombre_empresa else "")
         + '</div>\n'
-        + f'  <div class="acciones">{acciones_html}</div>\n'
-        + (f'  <ul class="datos">{datos_html}</ul>\n' if datos else "")
+        + f'  <div class="acciones" style="--i:1">{acciones_html}</div>\n'
+        + (f'  <ul class="datos anima" style="--i:2">{datos_html}</ul>\n'
+           if datos else "")
         + (f'  {empresa_html}\n' if empresa_html else "")
         + '</main>\n'
         + '<footer class="pie">'

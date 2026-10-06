@@ -159,7 +159,7 @@ def cerrar_sesion(cookie):
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "ECCSA_Colaboradores/0.2.0"
+    server_version = "ECCSA_Colaboradores/0.3.0"
 
     # El log por defecto escribe una línea por petición CON la ruta completa, y
     # la ruta ES el token. Los tokens acabarían en el log del contenedor, que
@@ -248,6 +248,21 @@ class Handler(BaseHTTPRequestHandler):
             # Sin BD a propósito: un sondeo que se cuelga por la base reporta
             # la app como caída cuando lo que está caído es SQL Server.
             return self._enviar(200, "ok", "text/plain; charset=utf-8")
+
+        # `panel/engrane.png`: la textura de fondo que el CSS del shell pide con
+        # url('/engrane.png'). shell.css es copia canónica y no se edita, así que
+        # lo que se hace es servir el archivo; si faltara, cada visita de la
+        # ficha sería un 404 más.
+        if ruta == "/engrane.png":
+            try:
+                with open(os.path.join(config.PANEL_DIR, "engrane.png"),
+                          "rb") as fh:
+                    return self._enviar(
+                        200, fh.read(), "image/png",
+                        extra=[("Cache-Control", "public, max-age=86400")])
+            except OSError:
+                return self._enviar(404, "", "text/plain; charset=utf-8",
+                                    con_log=False)
 
         if ruta == "/robots.txt":
             # No hay nada público que indexar. Las fichas son de personas

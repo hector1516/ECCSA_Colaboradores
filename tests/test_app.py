@@ -103,33 +103,26 @@ class TestHelpers(unittest.TestCase):
     def test_el_token_cambia_si_cambia_el_secreto(self):
         """Rotar el secreto invalida todas las tarjetas. Es el precio del diseño."""
         from panel import tokens as tk
+        original = config_mod.ficha_secreto
         antes = tk.token_de(2)
-        ruta = config_mod.FICHA_SECRET_FILE
-        with open(ruta, encoding="utf-8") as fh:
-            original = fh.read()
         try:
-            with open(ruta, "w", encoding="utf-8") as fh:
-                fh.write("otro-secreto-distinto")
+            config_mod.ficha_secreto = lambda: "otro-secreto-distinto"
             self.assertNotEqual(tk.token_de(2), antes)
         finally:
-            with open(ruta, "w", encoding="utf-8") as fh:
-                fh.write(original)
+            config_mod.ficha_secreto = original
         self.assertEqual(tk.token_de(2), antes)
 
     def test_sin_secreto_no_hay_token(self):
         """Sin secreto la app devuelve cadena vacia, nunca un token debil."""
         from panel import tokens as tk
-        ruta = config_mod.FICHA_SECRET_FILE
-        with open(ruta, encoding="utf-8") as fh:
-            original = fh.read()
+        original = config_mod.ficha_secreto
         try:
-            with open(ruta, "w", encoding="utf-8") as fh:
-                fh.write("")
+            config_mod.ficha_secreto = lambda: ""
             self.assertEqual(tk.token_de(2), "")
             self.assertEqual(tk.construir_slug("X", 2), "")
+            self.assertEqual(tk.persona_por_token("x-" + "A" * 32), None)
         finally:
-            with open(ruta, "w", encoding="utf-8") as fh:
-                fh.write(original)
+            config_mod.ficha_secreto = original
 
     def test_slug_valido_rechaza_basura(self):
         from panel.tokens import slug_valido
@@ -355,6 +348,49 @@ class TestRutas(unittest.TestCase):
             self.assertEqual(tipo, "image/jpeg")
         finally:
             server.tokens.foto_bytes = original_fn
+
+    def test_la_ficha_es_animada_pero_sin_js(self):
+        """Las animaciones son CSS puro: la ficha se abre con un dedo pegado a
+        una tarjeta NFC y tiene que verse igual aunque el JS tarde o falle."""
+        _, cuerpo, _ = self._get("/" + self.ficha["Slug"])
+        texto = cuerpo.decode("utf-8")
+        self.assertNotIn("<script", texto.lower())
+        self.assertNotIn("onclick", texto.lower())
+        # Cascada de entrada: el retardo escalonado va en el HTML como `--i`.
+        self.assertIn('class="identidad anima" style="--i:0"', texto)
+
+    def test_la_foto_es_grande(self):
+        """La foto era de 120 px (tamaño de icono) y no se veia bien.
+
+        Se comprueba que el CSS siga dimensionándola con clamp(), y no con un
+        tamaño fijo pequeño que alguien vuelva a dejar.
+        """
+        import os
+
+        css = open(os.path.join(os.path.dirname(os.path.dirname(
+            os.path.abspath(__file__))), "panel", "ficha.css"),
+            encoding="utf-8").read()
+        self.assertIn("clamp(132px, 40vw, 210px)", css)
+
+    def test_reducir_movimiento_apaga_las_animaciones(self):
+        """Una persona con desordenes vestibulares ve un fondo en movimiento y
+        se marea. Con 'reducir animaciones' activado, TODO tiene que apagarse."""
+        import os
+
+        css = open(os.path.join(os.path.dirname(os.path.dirname(
+            os.path.abspath(__file__))), "panel", "ficha.css"),
+            encoding="utf-8").read()
+        self.assertIn("@media (prefers-reduced-motion: reduce)", css)
+        self.assertIn("animation: none !important", css)
+
+    def test_la_textura_de_fondo_se_sirve(self):
+        """El CSS del shell pide /engrane.png; si no lo sirve la app, cada
+        visita de la ficha es un 404 más."""
+        codigo, cuerpo, cabeceras = self._get("/engrane.png")
+        self.assertEqual(codigo, 200)
+        self.assertEqual(cabeceras.get("Content-Type"), "image/png")
+        # Firma del PNG: 89 50 4E 47.
+        self.assertEqual(cuerpo[:4], b"\x89PNG")
 
     def test_ficha_muestra_el_puesto(self):
         """El puesto viene de HUB_Users.Puesto y va bajo el nombre."""

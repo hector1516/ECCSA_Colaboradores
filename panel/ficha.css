@@ -9,6 +9,40 @@
    objetivos táctiles de 44px (--tap) y nada que dependa del hover.
 */
 
+/* ─── Fondo: aurora animada ───────────────────────────────────────────────
+   La aurora va en `body.ficha::after`. La textura de engrane que trae el shell
+   (`body::before` con `url('/engrane.png')`) NO se toca: `panel/engrane.png`
+   existe y lo sirve la app, y ese archivo es copia canónica del ECCSA-Shell
+   que esta app no puede editar.
+
+   Dos manchas de luz muy tenues que se desplazan en 18 s. Con
+   `will-change` y sin `filter: blur()` por elemento (que obliga al navegador a
+   recomponer cada frame), que es lo que hace janky este tipo de efecto.
+*/
+body.ficha {
+	position: relative;
+	overflow-x: hidden;
+}
+
+body.ficha::after {
+	content: "";
+	position: fixed;
+	inset: -30%;
+	z-index: 0;
+	pointer-events: none;
+	background:
+		radial-gradient(38% 34% at 22% 26%, rgba(255, 107, 0, .30), transparent 70%),
+		radial-gradient(34% 30% at 78% 72%, rgba(59, 130, 246, .22), transparent 70%);
+	animation: aurora 18s ease-in-out infinite alternate;
+	will-change: transform;
+}
+
+.tarjeta,
+.pie {
+	position: relative;
+	z-index: 1;
+}
+
 /* ─── Ficha pública ─────────────────────────────────────────────────────── */
 body.ficha {
 	display: flex;
@@ -39,30 +73,78 @@ body.ficha {
 	margin-bottom: 24px;
 }
 
-/* La foto viene de HUB_Users.Foto como data-URI y es cuadrada con object-fit:
-   las fotos del HUB no todas respetan la proporción, y sin esto se deforman. */
+/* ─── La foto: protagonista de la tarjeta ──────────────────────────────────
+   Venía en 120 px, que es del tamaño de un icono de WhatsApp: la cara de la
+   persona se veía diminuta y no cumplía su función, que es reconocer a quién
+   tienes enfrente.
+
+   Ahora ocupa ~40% del ancho de la pantalla, con tope y suelo:
+     · 210 px es el máximo, para que en una tablet no se convierta en un
+       poster desproporcionado;
+     · 132 px es el mínimo, porque en un móvil de 320 px de ancho (iPhone SE
+       de la primera generación, los Galaxy de gama baja) un tamaño calculado
+       en vw se iría de la pantalla.
+*/
 .foto,
 .avatar {
-	width: 120px;
-	height: 120px;
+	width: clamp(132px, 40vw, 210px);
+	aspect-ratio: 1;
 	border-radius: 50%;
-	margin: 0 auto 16px;
+	margin: 0 auto 20px;
 	object-fit: cover;
+	/* `cover` y no `contain`: las fotos de HUB_UsuariosFotos son verticales de
+	   celular. Con contain se vería la foto entera con bandas negras a los lados
+	   dentro del círculo, que es justo lo que hace que "no se vea bien". */
+	object-position: 50% 28%;
 	display: block;
 	border: 3px solid var(--color-primary);
+	position: relative;
 }
 
-/* Sin foto: iniciales sobre el acento. Es el estado por defecto de un usuario
-   que nunca subió su foto al HUB, y tiene que verse bien, no roto. */
+/* Anillo que gira alrededor de la foto: da movimiento sin pedir atención. Es un
+   conic-gradient animado, que es CSS puro — cero peticiones y cero JS. El
+   `--rotate` es el ángulo que anima la transición, y el ::before lo lleva como
+   máscara: el degradado se ve, la foto se recorta con `padding` (técnica de
+   masking, sin `mask-composite`, que todavía no está en todos los Safari). */
+.foto::before,
+.avatar::before {
+	content: "";
+	position: absolute;
+	inset: -7px;
+	border-radius: 50%;
+	background: conic-gradient(from var(--rotate, 0deg),
+		var(--color-primary),
+		var(--color-primary-light),
+		var(--color-primary),
+		var(--color-info),
+		var(--color-primary));
+	-webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 4px),
+		#000 calc(100% - 4px));
+	mask: radial-gradient(farthest-side, transparent calc(100% - 4px),
+		#000 calc(100% - 4px));
+	animation: girar-anillo 7s linear infinite;
+	z-index: -1;
+}
+
+/* Sombra que respira, para que la foto se levante de la tarjeta. */
+.foto,
+.avatar {
+	box-shadow: 0 10px 34px rgba(0, 0, 0, .5), 0 0 0 0 rgba(255, 107, 0, .45);
+	animation: respirar 4.5s ease-in-out infinite;
+}
+
+/* Sin foto: iniciales sobre el acento. Es el estado por defecto de quien nunca
+   subió su foto desde Admon, y tiene que verse bien, no roto. */
 .avatar {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	background: var(--color-primary);
+	background:
+		radial-gradient(circle at 30% 25%, #FFAE00, var(--color-primary) 70%);
 	color: #0F172A;
-	font-size: 40px;
+	font-size: clamp(2.4rem, 11vw, 3.4rem);
 	font-weight: 700;
-	letter-spacing: 1px;
+	letter-spacing: .5px;
 }
 
 .nombre {
@@ -472,4 +554,174 @@ input:focus {
 	color: var(--color-text-muted);
 	font-size: 14px;
 	margin: 2px 0 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Animaciones
+   ═══════════════════════════════════════════════════════════════════════════
+   Todo es CSS puro, sin JavaScript. La ficha se abre con un dedo pegado a una
+   tarjeta NFC: si el JS tarda o falla, la página tiene que servirse igual y
+   verse igual. Además `prefers-reduced-motion` desactiva todo, que es lo que
+   corresponde con una animación de fondo en una pantalla de 3 segundos.
+
+   Los retardos van escalonados con `--i` (0, 1, 2, …) en el HTML: sin eso
+   todo aparecería a la vez y se perdería el efecto de "va apareciendo".
+*/
+
+/* Entrada: sube y se aclara. 620 ms es suficiente para leerse sin hacerlo
+   esperar; más de 800 ms empieza a sentirse lento. */
+@keyframes entrar {
+	from { opacity: 0; transform: translateY(14px); }
+	to   { opacity: 1; transform: none; }
+}
+
+.anima {
+	opacity: 0;
+	animation: entrar .62s cubic-bezier(.22, .9, .3, 1) forwards;
+	animation-delay: calc(var(--i, 0) * 85ms);
+}
+
+/* El anillo de la foto gira; `--rotate` es lo que se anima. */
+@keyframes girar-anillo {
+	to { --rotate: 360deg; }
+}
+
+/* @property es lo que permite animar una variable personalizada sin JavaScript.
+   Sin esto, `to { --rotate: 360deg }` no interpola y el anillo no se mueve:
+   las variables no son animables por defecto. Chrome/Safari/Firefox lo
+   soportan; donde no, el anillo se queda quieto y el resto sigue igual. */
+@property --rotate {
+	syntax: "<angle>";
+	inherits: false;
+	initial-value: 0deg;
+}
+
+/* La sombra que respira. */
+@keyframes respirar {
+	0%, 100% { box-shadow: 0 10px 34px rgba(0, 0, 0, .5), 0 0 0 0 rgba(255, 107, 0, .45); }
+	50%      { box-shadow: 0 14px 44px rgba(0, 0, 0, .55), 0 0 0 14px rgba(255, 107, 0, 0); }
+}
+
+/* La aurora del fondo. */
+@keyframes aurora {
+	0%   { transform: translate3d(0, 0, 0) scale(1); }
+	50%  { transform: translate3d(3%, -4%, 0) scale(1.08); }
+	100% { transform: translate3d(-3%, 4%, 0) scale(1.04); }
+}
+
+/* Al tocar un botón: se hunde y su halo se expande. */
+@keyframes toque {
+	0%   { box-shadow: 0 0 0 0 rgba(255, 107, 0, .55); }
+	100% { box-shadow: 0 0 0 16px rgba(255, 107, 0, 0); }
+}
+
+/* ─── Botones con movimiento ──────────────────────────────────────────────── */
+.accion {
+	position: relative;
+	overflow: hidden;
+	transition: transform .16s cubic-bezier(.3, 1.4, .5, 1),
+	            background .16s ease, border-color .16s ease;
+}
+
+/* El "Llamar" late despacio para que sea el que se nota primero: es la
+   acción que alguien de verdad quiere en cuanto abre la tarjeta. */
+.accion.principal {
+	animation: latir 2.8s ease-in-out infinite;
+}
+
+@keyframes latir {
+	0%, 100% { transform: scale(1); }
+	50%      { transform: scale(1.045); }
+}
+
+/* Brillo que recorre el botón al tocarlo. Es un `::after` que se desplaza, no
+   un filtro: el filtro obliga a recomponer y en gama baja da tirones. */
+.accion::after {
+	content: "";
+	position: absolute;
+	inset: 0;
+	background: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, .30),
+		transparent 62%);
+	opacity: 0;
+	pointer-events: none;
+}
+
+.accion:active {
+	transform: scale(.94);
+	border-color: var(--color-primary);
+}
+
+.accion:active::after {
+	opacity: 1;
+	animation: toque .55s ease-out forwards;
+}
+
+/* Los iconos se levantan un poco más que el texto al tocar: da la sensación de
+   que el botón "pulsó" sin tener que mover la etiqueta. */
+.accion:active .icono {
+	transform: translateY(-2px) scale(1.1);
+}
+
+.accion .icono {
+	transition: transform .18s cubic-bezier(.3, 1.5, .5, 1);
+}
+
+/* Las redes sociales entran con un rebote corto. */
+@keyframes rebote {
+	0%   { opacity: 0; transform: scale(.5) translateY(10px); }
+	60%  { transform: scale(1.12) translateY(0); }
+	100% { opacity: 1; transform: scale(1); }
+}
+
+.red {
+	animation: rebote .5s cubic-bezier(.3, 1.5, .5, 1) backwards;
+	animation-delay: calc(var(--i, 0) * 90ms);
+	transition: transform .16s ease;
+}
+
+.red:active { transform: scale(.9); }
+
+/* El marco de la tarjeta se ilumina una vez al cargar y se apaga: es el
+   "destello" inicial que hace que la tarjeta parezca_PRINTED y no estática. */
+@keyframes encender {
+	0%   { border-color: rgba(255, 107, 0, .9); }
+	100% { border-color: var(--color-line); }
+}
+
+.tarjeta {
+	animation: encender 1.3s ease-out .1s backwards;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   prefers-reduced-motion
+   ═══════════════════════════════════════════════════════════════════════════
+   Con "reducir animaciones" activado en el sistema (iOS: Ajustes > Accesibilidad
+   > Movimiento; Android: Accesibilidad > Quitar animaciones) TODO se apaga. No
+   es decoración: una persona con desórdenes vestibulares ve un fondo en movimiento y se marea.
+*/
+@media (prefers-reduced-motion: reduce) {
+	.anima,
+	.foto,
+	.avatar,
+	.foto::before,
+	.avatar::before,
+	body.ficha::after,
+	.red,
+	.tarjeta,
+	.accion,
+	.accion.principal {
+		animation: none !important;
+		opacity: 1 !important;
+		transform: none !important;
+	}
+}
+
+/* Pantallas muy bajas en horizontal (móvil acostado): la foto gigante + las
+   filas de datos no caben. Se achica un poco y se permite scroll. */
+@media (max-height: 480px) and (orientation: landscape) {
+	.foto,
+	.avatar {
+		width: clamp(96px, 22vh, 140px);
+		margin-bottom: 12px;
+	}
 }
