@@ -273,14 +273,21 @@ def foto_bytes(id_usuario):
 #   · el vCard va dentro de un archivo que el móvil tiene que parsear entero:
 #     375 KB de foto en un contacto hace que iOS a veces tarde en abrirlo.
 #
-# El lado del recorte. 460 px en vez de 320 porque el recorte va sesgado hacia
-# la cara (ver CENTRO_ROSTRO_VERTICAL): con 320 el encuadre salía con la frente
-# y los ojos pero cortando la barbilla, porque la cara ocupa más alto del que
-# entraba en un cuadrado de 320. 460 da la cara completa con aire.
+# El lado del recorte. No es el tamaño en que se PINTA (eso lo decide el CSS),
+# sino cuánta parte de la foto original entra en el cuadrado.
 #
-# NO se amplía una imagen más pequeña: estirar una foto de 128 px a 460 solo
+# Historia de este número, medida contra las fotos reales (896x1200):
+#   320 px -> frente y ojos, barbilla cortada (la cara no cabía entera)
+#   460 px -> la cara completa, pero muy apretada
+#   660 px -> cara completa CON cabeza y hombros, que es lo que se pidió: que se
+#            vea "un poco más" de la persona y no solo el rostro.
+#
+# Cuesta 48 KB de media contra los 31 KB de 460. Es el punto dulce: 700 px solo
+# suma 3 KB más por un encuadre casi idéntico.
+#
+# NO se amplía una imagen más pequeña: estirar una foto de 128 px a 660 solo
 # añade bytes y se ve borroso.
-LADO_AVATAR = 460
+LADO_AVATAR = 660
 CALIDAD_JPEG = 82
 
 
@@ -292,12 +299,14 @@ CALIDAD_JPEG = 82
 #   recorte al centro (0.50) -> franja 37%-63% de la altura: PECHO Y BOCA. La
 #       cara queda fuera y la ficha mostraba "solo la boca".
 #   0.30 -> sube demasiado: frente y ojos bien, pero cuts la BARBILLA.
-#   0.42 -> la cara completa (frente, ojos, nariz, boca y barbilla) y el
-#       círculo la encuadra bien. Es el valor.
+#   0.42 -> la cara completa (frente, ojos, nariz, boca y barbilla)
+#   0.48 -> cara completa más cabeza y hombros, que es el encuadre actual: la
+#       ficha se abre al tocar una tarjeta y conviene reconocer a la persona de
+#       cuerpo, no solo verle la cara muy grande.
 #
 # Es un dato de las fotos de ESTA gente, no una regla universal: si algún día se
 # suben retratos ya encuadrados, se ajusta este número una vez y se acabó.
-CENTRO_ROSTRO_VERTICAL = 0.42
+CENTRO_ROSTRO_VERTICAL = 0.48
 
 
 def _arriba_del_recorte(alto, lado):

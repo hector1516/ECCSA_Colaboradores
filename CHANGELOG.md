@@ -6,6 +6,26 @@ Todos los cambios de esta app. Formato: qué cambió, en qué archivos y por qu�
 - `migrations/0057…` → migración de esquema (vive en el repo **HUB**)
 - `deploy/app.conf` → definición del contenedor en WebbApps
 
+## 0.3.4 — 2026-10-06
+
+### Changed
+
+- **Encuadre de la foto, más abierto**: de 460 px @ 42% a **660 px @ 48%**.
+  Ahora entra la cara completa CON cabeza y hombros, que es lo que pedía
+  "que se logre ver un poco más": la ficha se abre al tocar una tarjeta y
+  conviene reconocer a la persona de cuerpo, no verle solo la cara enormous.
+  Verificado con los 10 avatares: el encuadre sirve para todos.
+- Cuesta 48 KB de media contra los 31 KB de antes (la ficha pasa de 97 KB a
+  ~115 KB). 700 px solo sumaba 3 KB más por un encuadre casi idéntico, así que
+  660 es el punto.
+
+### Tests
+
+El test de reducción fijaba un factor de compresión sobre una foto de RUIDO
+ALEATORIO, que es el peor caso para JPEG y no representa una foto real. Ahora
+comprueba lo que importa: que el avatar nunca exceda `LADO_AVATAR` en píxeles y
+que pese menos que la original.
+
 ## 0.3.3 — 2026-10-06
 
 ### Fixed

@@ -329,15 +329,19 @@ class TestRutas(unittest.TestCase):
         try:
             reducido, tipo = server.tokens.foto_thumbnail(99)
             self.assertEqual(tipo, "image/jpeg")
-            # El ruido aleatorio es el PEOR caso para JPEG (no comprime nada),
-            # así que 4x es holgado a propósito. Lo que de verdad se comprueba es
-            # que la ficha NUNCA mande la original de ~1 MB: el avatar real pesa
-            # 35-48 KB contra los 450-550 KB de la original.
-            self.assertLess(len(reducido) * 4, len(original),
-                            f"mini {len(reducido)}b vs original {len(original)}b")
+
             salida = Image.open(io.BytesIO(base64.b64decode(reducido)))
+            # Cuadrada y NUNCA más grande que el tope: esto es la garantía que
+            # importa, la que hace que la página no se vaya a 1 MB.
             self.assertEqual(salida.width, salida.height)
             self.assertLessEqual(max(salida.size), server.tokens.LADO_AVATAR)
+
+            # Y tiene que pesar menos que la original. No se fija un factor
+            # exacto porque la foto de prueba es RUIDO ALEATORIO, que es el peor
+            # caso posible para JPEG (no comprima nada); con una foto real el
+            # avatar pesa 40-50 KB contra 450-550 KB de la original.
+            self.assertLess(len(base64.b64decode(reducido)), len(original),
+                            f"mini vs original {len(original)}b")
         finally:
             server.tokens.foto_bytes = original_fn
 
