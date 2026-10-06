@@ -171,17 +171,23 @@ def ficha_page(ficha, empresa):
     tel_oficina = empresa.get("colab_empresa_telefono", "")
 
     # ── Identidad ──
+    # Markup idéntico al de AdmonApp (UsuarioDetalle.svelte): un contenedor
+    # circular con overflow:hidden y la foto dentro al 100% con object-fit:cover.
+    # El recorte al centro es lo que deja la cara bien colocada; esta app antes
+    # desplazaba el recorte al 28% "para acercar la cara" y quedaba descuadrada.
     if foto:
-        # La foto viene de HUB_UsuariosFotos, reducida a 320x320 JPEG. Se pone
-        # como data-URI: la ficha es una sola página y sin segunda petición por
-        # la imagen.
-        identidad = (f'<img class="foto" src="data:{esc(foto_tipo)};base64,{esc(foto)}" '
-                     f'alt="Fotografía de {esc(nombre)}" width="120" height="120">')
+        # Viene de HUB_UsuariosFotos reducida a 320x320 JPEG, como data-URI: la
+        # ficha es una sola página y así no hay una segunda petición por la
+        # imagen.
+        identidad = (f'<div class="marco-foto">'
+                     f'<img src="data:{esc(foto_tipo)};base64,{esc(foto)}" '
+                     f'alt="Fotografía de {esc(nombre)}"></div>')
     else:
-        # Sin foto: iniciales sobre el color de acento. Es lo que evita que la
-        # tarjeta se vea rota si alguien nunca subió su foto al HUB.
+        # Sin foto: iniciales. Es lo que evita que la tarjeta se vea rota si el
+        # usuario nunca subió su foto desde Admon.
         iniciales = "".join(p[0] for p in nombre.split()[:2]).upper() or "?"
-        identidad = f'<div class="avatar" aria-hidden="true">{esc(iniciales)}</div>'
+        identidad = (f'<div class="marco-foto" aria-hidden="true">'
+                     f'<span class="iniciales">{esc(iniciales)}</span></div>')
 
     # ── Botones de acción ──
     acciones = []
@@ -292,7 +298,8 @@ def no_encontrado_page():
         _cabeza("No encontrado", robots=True)
         + '<body class="ficha error">\n'
         + '<main class="tarjeta">\n'
-        + '  <div class="identidad"><div class="avatar">?</div>'
+        + '  <div class="identidad"><div class="marco-foto">'
+        + '<span class="iniciales">?</span></div>'
         + '<h1 class="nombre">Ficha no encontrada</h1>'
         + '<p class="puesto">El enlace puede no ser válido o la tarjeta haber '
         + 'sido dada de baja.</p></div>\n'
@@ -306,7 +313,7 @@ def error_page(mensaje="Algo salió mal"):
         _cabeza("Error", robots=True)
         + '<body class="ficha error">\n'
         + '<main class="tarjeta"><div class="identidad">'
-        + '<div class="avatar">!</div>'
+        + '<div class="marco-foto"><span class="iniciales">!</span></div>'
         + f'<h1 class="nombre">{esc(mensaje)}</h1>'
         + '<p class="puesto">Intenta de nuevo en un momento.</p>'
         + '</div></main>\n'

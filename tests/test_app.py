@@ -370,10 +370,14 @@ class TestRutas(unittest.TestCase):
         css = open(os.path.join(os.path.dirname(os.path.dirname(
             os.path.abspath(__file__))), "panel", "ficha.css"),
             encoding="utf-8").read()
-        self.assertIn("clamp(168px, 62vw, 300px)", css)
-        # El recorte a 50% 28% es lo que hace que la cara se vea bien: las fotos
-        # son verticales de celular y centradas salian cortadas por la frente.
-        self.assertIn("object-position: 50% 28%", css)
+        self.assertIn("clamp(190px, 68vw, 340px)", css)
+        # El recorte va CENTRADO, como en AdmonApp. Esta app antes lo desplazaba
+        # al 28% "para acercar la cara" y el resultado era un recorte descuadrado
+        # que se veía peor que el de Admon.
+        self.assertIn("object-fit: cover", css)
+        import re as _re
+        reglas = _re.sub(r"/\*.*?\*/", "", css, flags=_re.S)
+        self.assertNotIn("object-position", reglas)
 
     def test_el_fondo_es_el_del_shell(self):
         """El fondo tiene que ser el engrane del shell, como Field y Admon.
@@ -414,6 +418,45 @@ class TestRutas(unittest.TestCase):
             self.assertEqual(md5(campo), md5(field),
                              "el engrane dejó de ser el de Field")
 
+    def test_el_marco_de_la_foto_es_el_de_admon(self):
+        """Contenedor circular con overflow:hidden y la foto dentro al 100%.
+
+        Es la técnica de AdmonApp (`UsuarioDetalle.svelte`, `.avatar`). El
+        `border-radius` va en el CONTENEDOR y no en la <img>, para que el recorte
+        sirva igual para la foto y para las iniciales sin dos reglas.
+        """
+        # Las dos ramas: con foto (marco + <img>) y sin foto (marco + iniciales).
+        original = server.tokens.persona_por_token
+
+        def con_foto(slug):
+            persona = original(slug)
+            if persona:
+                persona["Foto"] = "AAAA"
+                persona["FotoTipo"] = "image/jpeg"
+            return persona
+
+        server.tokens.persona_por_token = con_foto
+        try:
+            _, cuerpo, _ = self._get("/" + self.ficha["Slug"])
+            con = cuerpo.decode("utf-8")
+            self.assertIn('<div class="marco-foto">', con)
+            self.assertIn("<img src=", con)
+        finally:
+            server.tokens.persona_por_token = original
+
+        _, cuerpo, _ = self._get("/" + self.ficha["Slug"])
+        sin = cuerpo.decode("utf-8")
+        self.assertIn('class="marco-foto" aria-hidden="true"', sin)
+        self.assertIn('class="iniciales"', sin)
+
+        import os
+
+        css = open(os.path.join(os.path.dirname(os.path.dirname(
+            os.path.abspath(__file__))), "panel", "ficha.css"),
+            encoding="utf-8").read()
+        self.assertIn(".marco-foto img {", css)
+        self.assertIn("overflow: hidden;", css)
+
     def test_reducir_movimiento_apaga_las_animaciones(self):
         """Una persona con desordenes vestibulares ve un fondo en movimiento y
         se marea. Con 'reducir animaciones' activado, TODO tiene que apagarse."""
@@ -448,9 +491,10 @@ class TestRutas(unittest.TestCase):
         codigo, cuerpo, _ = self._get("/" + self.ficha["Slug"])
         texto = cuerpo.decode("utf-8")
         self.assertEqual(codigo, 200)
-        self.assertIn('class="avatar"', texto)
+        self.assertIn('class="marco-foto"', texto)
         self.assertIn(">HP<", texto)
-        self.assertNotIn('class="foto"', texto)
+        # Sin foto no debe quedar un <img> roto: el marco lleva las iniciales.
+        self.assertNotIn("<img src=", texto)
 
     def test_foto_que_rompe_el_html_se_escapa(self):
         """Una foto con HTML se escapa: si no, es XSS servido desde la BD.

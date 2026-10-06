@@ -6,6 +6,34 @@ Todos los cambios de esta app. Formato: qué cambió, en qué archivos y por qu�
 - `migrations/0057…` → migración de esquema (vive en el repo **HUB**)
 - `deploy/app.conf` → definición del contenedor en WebbApps
 
+## 0.3.2 — 2026-10-06
+
+### Fixed
+
+- **El recorte de la foto, copiado de AdmonApp.** Esta app ponía el
+  `border-radius` y el `object-position` directamente en la `<img>` y desplazaba
+  el recorte al 28% vertical "para acercar la cara". El resultado era un
+  recorte descuadrado y se veía peor que en Admon, que sí lo hace bien.
+  Ahora es la misma técnica que `UsuarioDetalle.svelte`: un contenedor
+  `.marco-foto` circular con `overflow: hidden`, y la foto dentro al 100% con
+  `object-fit: cover` **centrado**. El `border-radius` va en el contenedor, lo
+  que además hace que el mismo marco sirva para las iniciales sin dos reglas.
+- Las iniciales sin foto usan fondo neutro y texto en color de acento, como
+  Admon; estaban en naranja sólido y se veían como un avatar de juego.
+- El anillo girando y la sombra que respira se mueven al `.marco-foto` (el
+  `::before` sobre la `<img>` quedaba detrás de la foto y no se veía).
+
+### Changed
+
+- Foto a `clamp(190px, 68vw, 340px)` (era `clamp(168px, 62vw, 300px)`).
+  Admon usa 7rem/9rem; aquí es bastante más grande porque la ficha entera es la
+  foto.
+
+### Tests
+
+45 → 46. El nuevo comprueba el markup de las dos ramas (con foto y sin foto) y
+que el CSS no vuelva a meter un `object-position`.
+
 ## 0.3.1 — 2026-10-06
 
 ### Fixed
