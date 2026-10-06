@@ -370,7 +370,49 @@ class TestRutas(unittest.TestCase):
         css = open(os.path.join(os.path.dirname(os.path.dirname(
             os.path.abspath(__file__))), "panel", "ficha.css"),
             encoding="utf-8").read()
-        self.assertIn("clamp(132px, 40vw, 210px)", css)
+        self.assertIn("clamp(168px, 62vw, 300px)", css)
+        # El recorte a 50% 28% es lo que hace que la cara se vea bien: las fotos
+        # son verticales de celular y centradas salian cortadas por la frente.
+        self.assertIn("object-position: 50% 28%", css)
+
+    def test_el_fondo_es_el_del_shell(self):
+        """El fondo tiene que ser el engrane del shell, como Field y Admon.
+
+        Esta app tenía su propia aurora y se veía un fondo DISTINTO al del resto
+        del ecosistema. Ahora no define fondo: hereda el del shell.
+        """
+        import os
+
+        base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        css = open(os.path.join(base, "panel", "ficha.css"),
+                   encoding="utf-8").read()
+        # Se buscan las REGLAS, no la palabra: el comentario que explica por
+        # qué ya no hay aurora la menciona. Por eso se quitan los comentarios
+        # COMPLETOS, incluidos los de varias líneas, no solo las líneas que
+        # empiezan por /*.
+        import re as _re
+
+        reglas = _re.sub(r"/\*.*?\*/", "", css, flags=_re.S)
+        reglas = _re.sub(r"//[^\n]*", "", reglas)
+        self.assertNotIn("aurora", reglas)
+        self.assertNotIn("body.ficha::after", reglas)
+        # Y tampoco puede haber un keyframe huerfano que ya no se use.
+        self.assertNotIn("@keyframes aurora", reglas)
+
+        # Y el engrane que sirve es COPIA del de Field, no un dibujo propio.
+        import hashlib
+
+        def md5(path):
+            with open(path, "rb") as fh:
+                return hashlib.md5(fh.read()).hexdigest()
+
+        campo = os.path.join(base, "panel", "engrane.png")
+        field = os.path.join(os.path.dirname(base), "field", "static",
+                             "engrane.png")
+        self.assertTrue(os.path.isfile(campo), "falta panel/engrane.png")
+        if os.path.isfile(field):
+            self.assertEqual(md5(campo), md5(field),
+                             "el engrane dejó de ser el de Field")
 
     def test_reducir_movimiento_apaga_las_animaciones(self):
         """Una persona con desordenes vestibulares ve un fondo en movimiento y

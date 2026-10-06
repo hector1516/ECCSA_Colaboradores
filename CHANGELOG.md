@@ -6,6 +6,23 @@ Todos los cambios de esta app. Formato: qué cambió, en qué archivos y por qu�
 - `migrations/0057…` → migración de esquema (vive en el repo **HUB**)
 - `deploy/app.conf` → definición del contenedor en WebbApps
 
+## 0.3.1 — 2026-10-06
+
+### Fixed
+
+- **El fondo vuelve a ser el del ecosistema.** Esta app tenía su propia aurora
+  animada y se veía un fondo DISTINTO al de Field y Admon. Ahora no define
+  fondo: hereda el engrane del shell (`body::before`, 5%). Y
+  `panel/engrane.png` es copia del de Field (mismo md5), no el dibujo que se
+  había hecho para esta app: así la textura es idéntica píxel a píxel.
+- **Foto más grande**: de `clamp(132px, 40vw, 210px)` a
+  `clamp(168px, 62vw, 300px)`. Los nombres y los puestos también crecen.
+
+### Tests
+
+44 → 45. El nuevo comprueba que la ficha no define fondo propio y que el
+engrane que sirve sigue siendo el de Field.
+
 ## 0.3.0 — 2026-10-06
 
 La ficha se ve como una tarjeta de presentación de verdad.

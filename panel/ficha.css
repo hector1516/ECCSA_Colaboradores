@@ -9,39 +9,15 @@
    objetivos táctiles de 44px (--tap) y nada que dependa del hover.
 */
 
-/* ─── Fondo: aurora animada ───────────────────────────────────────────────
-   La aurora va en `body.ficha::after`. La textura de engrane que trae el shell
-   (`body::before` con `url('/engrane.png')`) NO se toca: `panel/engrane.png`
-   existe y lo sirve la app, y ese archivo es copia canónica del ECCSA-Shell
-   que esta app no puede editar.
+/* ─── Fondo ───────────────────────────────────────────────────────────────
+   NO se define nada aquí a propósito: el fondo es el del shell
+   (`body::before` con `url('/engrane.png')` al 5%), el mismo que Field y Admon.
+   Antes esta app tenía su propia aurora y lo que se veía era OTRO fondo, no el
+   de las demás apps.
 
-   Dos manchas de luz muy tenues que se desplazan en 18 s. Con
-   `will-change` y sin `filter: blur()` por elemento (que obliga al navegador a
-   recomponer cada frame), que es lo que hace janky este tipo de efecto.
+   `panel/engrane.png` es COPIA del de Field (`static/engrane.png`, mismo md5),
+   no un dibujo hecho para esta app: así la textura es idéntica píxel a píxel.
 */
-body.ficha {
-	position: relative;
-	overflow-x: hidden;
-}
-
-body.ficha::after {
-	content: "";
-	position: fixed;
-	inset: -30%;
-	z-index: 0;
-	pointer-events: none;
-	background:
-		radial-gradient(38% 34% at 22% 26%, rgba(255, 107, 0, .30), transparent 70%),
-		radial-gradient(34% 30% at 78% 72%, rgba(59, 130, 246, .22), transparent 70%);
-	animation: aurora 18s ease-in-out infinite alternate;
-	will-change: transform;
-}
-
-.tarjeta,
-.pie {
-	position: relative;
-	z-index: 1;
-}
 
 /* ─── Ficha pública ─────────────────────────────────────────────────────── */
 body.ficha {
@@ -78,19 +54,18 @@ body.ficha {
    persona se veía diminuta y no cumplía su función, que es reconocer a quién
    tienes enfrente.
 
-   Ahora ocupa ~40% del ancho de la pantalla, con tope y suelo:
-     · 210 px es el máximo, para que en una tablet no se convierta en un
-       poster desproporcionado;
-     · 132 px es el mínimo, porque en un móvil de 320 px de ancho (iPhone SE
-       de la primera generación, los Galaxy de gama baja) un tamaño calculado
-       en vw se iría de la pantalla.
+   Ahora ocupa ~62% del ancho de la pantalla, con tope y suelo:
+     · 300 px es el máximo, para que en una tablet no sea un cartel;
+     · 168 px es el mínimo, porque en un móvil de 320 px de ancho (iPhone SE
+       de la primera generación, Galaxy de gama baja) un tamaño en `vw` se
+       saldría de la pantalla.
 */
 .foto,
 .avatar {
-	width: clamp(132px, 40vw, 210px);
+	width: clamp(168px, 62vw, 300px);
 	aspect-ratio: 1;
 	border-radius: 50%;
-	margin: 0 auto 20px;
+	margin: 0 auto 24px;
 	object-fit: cover;
 	/* `cover` y no `contain`: las fotos de HUB_UsuariosFotos son verticales de
 	   celular. Con contain se vería la foto entera con bandas negras a los lados
@@ -110,7 +85,7 @@ body.ficha {
 .avatar::before {
 	content: "";
 	position: absolute;
-	inset: -7px;
+	inset: -9px;
 	border-radius: 50%;
 	background: conic-gradient(from var(--rotate, 0deg),
 		var(--color-primary),
@@ -142,13 +117,13 @@ body.ficha {
 	background:
 		radial-gradient(circle at 30% 25%, #FFAE00, var(--color-primary) 70%);
 	color: #0F172A;
-	font-size: clamp(2.4rem, 11vw, 3.4rem);
+	font-size: clamp(3rem, 15vw, 4.5rem);
 	font-weight: 700;
 	letter-spacing: .5px;
 }
 
 .nombre {
-	font-size: 24px;
+	font-size: clamp(1.6rem, 7vw, 2.1rem);
 	font-weight: 700;
 	margin: 0 0 4px;
 	line-height: 1.25;
@@ -159,7 +134,7 @@ body.ficha {
 
 .puesto {
 	color: var(--color-text-muted);
-	font-size: 15px;
+	font-size: clamp(1rem, 4vw, 1.15rem);
 	margin: 0;
 }
 
@@ -552,7 +527,7 @@ input:focus {
 
 .empresa-nombre {
 	color: var(--color-text-muted);
-	font-size: 14px;
+	font-size: 15px;
 	margin: 2px 0 0;
 }
 
@@ -600,13 +575,6 @@ input:focus {
 @keyframes respirar {
 	0%, 100% { box-shadow: 0 10px 34px rgba(0, 0, 0, .5), 0 0 0 0 rgba(255, 107, 0, .45); }
 	50%      { box-shadow: 0 14px 44px rgba(0, 0, 0, .55), 0 0 0 14px rgba(255, 107, 0, 0); }
-}
-
-/* La aurora del fondo. */
-@keyframes aurora {
-	0%   { transform: translate3d(0, 0, 0) scale(1); }
-	50%  { transform: translate3d(3%, -4%, 0) scale(1.08); }
-	100% { transform: translate3d(-3%, 4%, 0) scale(1.04); }
 }
 
 /* Al tocar un botón: se hunde y su halo se expande. */
@@ -705,7 +673,6 @@ input:focus {
 	.avatar,
 	.foto::before,
 	.avatar::before,
-	body.ficha::after,
 	.red,
 	.tarjeta,
 	.accion,
