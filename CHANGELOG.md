@@ -6,6 +6,34 @@ Todos los cambios de esta app. Formato: qué cambió, en qué archivos y por qu�
 - `migrations/0057…` → migración de esquema (vive en el repo **HUB**)
 - `deploy/app.conf` → definición del contenedor en WebbApps
 
+## 0.5.0 — 2026-10-09
+
+### Added
+
+- **El retrato "vive"** (`panel/ficha.css`, `panel/plantillas.py`): la foto de la
+  ficha ya no es una imagen fija. Se mueve en bucle, muy lento, como un cuadro
+  encantado, y todo es CSS puro (la ficha sigue sin una línea de JavaScript):
+
+    · **La foto respira** — se acerca y se aleja y se balancea (`retrato-vivo`,
+      26 s). Nunca baja de `scale(1.07)`, así que al desplazarse no descubre
+      bordes vacíos dentro del círculo; la rotación es de menos de medio grado.
+    · **Una luz la recorre** — una franja diagonal cálida cruza el rostro cada
+      11 s, como el brillo de una vela (`luz-viva`).
+    · **Motas doradas** — chispas que ascienden y se desvanecen (`brasas`).
+
+  La capa de efectos va en un `<span class="vida">` DENTRO del marco, para
+  heredar el recorte circular, y solo se pinta cuando hay foto: las iniciales
+  de quien no subió foto se quedan quietas.
+
+- **`prefers-reduced-motion` oculta los efectos** en vez de congelarlos: una
+  mota fija o una franja de luz parada sobre la cara se vería como un defecto.
+  La foto vuelve a su tamaño normal.
+
+### Tests
+
+51 → 52. El nuevo comprueba que la rama con foto lleve la capa `.vida` y que
+el CSS traiga los tres `@keyframes` del retrato vivo.
+
 ## 0.4.1 — 2026-10-06
 
 ### Changed

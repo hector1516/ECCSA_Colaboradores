@@ -426,6 +426,45 @@ class TestRutas(unittest.TestCase):
         # Cascada de entrada: el retardo escalonado va en el HTML como `--i`.
         self.assertIn('class="identidad anima" style="--i:0"', texto)
 
+    def test_el_retrato_esta_vivo(self):
+        """La foto se mueve en bucle, como un cuadro encantado, y sin JS.
+
+        La capa `.vida` va DENTRO del marco (así hereda el recorte circular) y
+        solo existe cuando hay foto: sin foto, las iniciales se quedan quietas.
+        """
+        import os
+
+        original = server.tokens.persona_por_token
+
+        def con_foto(slug):
+            persona = original(slug)
+            if persona:
+                persona["Foto"] = "AAAA"
+                persona["FotoTipo"] = "image/jpeg"
+            return persona
+
+        server.tokens.persona_por_token = con_foto
+        try:
+            _, cuerpo, _ = self._get("/" + self.ficha["Slug"])
+            texto = cuerpo.decode("utf-8")
+            self.assertIn('<span class="vida" aria-hidden="true"></span>', texto)
+            self.assertNotIn("<script", texto.lower())
+        finally:
+            server.tokens.persona_por_token = original
+
+        # Sin foto: ni capa ni movimiento.
+        _, cuerpo, _ = self._get("/" + self.ficha["Slug"])
+        self.assertNotIn('class="vida"', cuerpo.decode("utf-8"))
+
+        # El CSS trae las tres animaciones y las apaga con reduced-motion.
+        css = open(os.path.join(os.path.dirname(os.path.dirname(
+            os.path.abspath(__file__))), "panel", "ficha.css"),
+            encoding="utf-8").read()
+        for nombre in ("retrato-vivo", "luz-viva", "brasas"):
+            self.assertIn("@keyframes " + nombre, css)
+        bloque = css.split("@media (prefers-reduced-motion: reduce)")[1]
+        self.assertIn(".vida::after", bloque)
+
     def test_la_foto_es_grande(self):
         """La foto era de 120 px (tamaño de icono) y no se veia bien.
 

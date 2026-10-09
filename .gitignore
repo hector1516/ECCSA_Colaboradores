@@ -3,6 +3,8 @@ secretos_local.py
 .env
 *.env
 deploy/env.local
+# Notas locales con tokens/SSH del server. Nunca al repo.
+contras.txt
 
 # El secreto del panel vive en el volumen, no en el repo.
 admin_secret.txt

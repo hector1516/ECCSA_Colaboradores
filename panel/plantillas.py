@@ -195,9 +195,15 @@ def ficha_page(ficha, empresa):
         # Viene de HUB_UsuariosFotos reducida a 320x320 JPEG, como data-URI: la
         # ficha es una sola página y así no hay una segunda petición por la
         # imagen.
+        #
+        # `vida` es la capa del efecto "retrato vivo" (movimiento de cámara y
+        # luz en CSS puro, sin JS): va DENTRO del marco para heredar el recorte
+        # circular y solo se pinta cuando hay foto. Sin foto no existe, así que
+        # las iniciales se quedan quietas.
         identidad = (f'<div class="marco-foto">'
                      f'<img src="data:{esc(foto_tipo)};base64,{esc(foto)}" '
-                     f'alt="Fotografía de {esc(nombre)}"></div>')
+                     f'alt="Fotografía de {esc(nombre)}">'
+                     f'<span class="vida" aria-hidden="true"></span></div>')
     else:
         # Sin foto: iniciales. Es lo que evita que la tarjeta se vea rota si el
         # usuario nunca subió su foto desde Admon.

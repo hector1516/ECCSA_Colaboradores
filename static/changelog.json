@@ -1,7 +1,8 @@
 {
-  "version": "0.4.1",
-  "fecha": "2026-10-06",
+  "version": "0.5.0",
+  "fecha": "2026-10-09",
   "cambios": [
+    "La foto de la ficha se mueve en bucle, como un retrato con vida.",
     "Toca la tarjeta NFC de un colaborador y abre su ficha: teléfono, correo y WhatsApp.",
     "La ficha muestra la foto real que el colaborador sube desde la app de Admon.",
     "Botón para guardar el contacto en el teléfono, con la foto.",
