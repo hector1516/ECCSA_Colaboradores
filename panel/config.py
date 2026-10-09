@@ -11,7 +11,7 @@ APP_ID = "colaboradores"
 APP_NAME = "Colaboradores"
 # Versión de la app. Fuente ÚNICA: el banner la lee de aquí y el CHANGELOG la
 # tiene que repetir — tools/check_changelog.py falla si no coinciden.
-APP_VERSION = "0.5.0"
+APP_VERSION = "0.5.1"
 
 # Puerto interno del contenedor. El host lo mapea en /opt/apps/colaboradores/app.conf.
 PORT = int(os.environ.get("PORT", "8000"))

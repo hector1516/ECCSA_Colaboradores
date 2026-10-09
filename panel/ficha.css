@@ -139,16 +139,17 @@ body.ficha {
      · la sombra dorada respira (ya existía)   → `respirar`
    Todo se apaga con `prefers-reduced-motion` (bloque del final).
 
-   La foto NUNCA baja de scale(1.07): al balancearse (translate), si estuviera
-   a 1.0 descubriría los bordes vacíos dentro del círculo. La rotación es de
-   menos de medio grado: da vida sin marear. */
+   La foto NUNCA baja de scale(1.03): el zoom es suave, para ver más de la
+   foto. Al balancearse (translate) necesita margen dentro del círculo: con
+   scale(1.03) sobran ~1.5 % por lado, así que el desplazamiento se queda por
+   debajo de 1 %. La rotación es de menos de medio grado: da vida sin marear. */
 @keyframes retrato-vivo {
-	0%   { transform: scale(1.07) translate3d(0, 0, 0) rotate(0deg); }
-	17%  { transform: scale(1.11) translate3d(1.4%, -1.1%, 0) rotate(.4deg); }
-	36%  { transform: scale(1.08) translate3d(-1.2%, .7%, 0) rotate(-.35deg); }
-	54%  { transform: scale(1.13) translate3d(.9%, 1.2%, 0) rotate(.25deg); }
-	73%  { transform: scale(1.09) translate3d(-1.5%, -.8%, 0) rotate(-.4deg); }
-	100% { transform: scale(1.07) translate3d(0, 0, 0) rotate(0deg); }
+	0%   { transform: scale(1.03) translate3d(0, 0, 0) rotate(0deg); }
+	17%  { transform: scale(1.06) translate3d(.7%, -.6%, 0) rotate(.3deg); }
+	36%  { transform: scale(1.04) translate3d(-.6%, .4%, 0) rotate(-.25deg); }
+	54%  { transform: scale(1.07) translate3d(.5%, .7%, 0) rotate(.2deg); }
+	73%  { transform: scale(1.05) translate3d(-.8%, -.5%, 0) rotate(-.3deg); }
+	100% { transform: scale(1.03) translate3d(0, 0, 0) rotate(0deg); }
 }
 
 /* Capa de efectos, DENTRO del marco (hereda el recorte circular). Solo se

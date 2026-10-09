@@ -6,6 +6,15 @@ Todos los cambios de esta app. Formato: qué cambió, en qué archivos y por qu�
 - `migrations/0057…` → migración de esquema (vive en el repo **HUB**)
 - `deploy/app.conf` → definición del contenedor en WebbApps
 
+## 0.5.1 — 2026-10-09
+
+### Changed
+
+- **Menos zoom en el retrato** (`panel/ficha.css`): el `scale` base baja de
+  `1.07` a `1.03` y el máximo de `1.13` a `1.08`, y el balanceo se reduce a
+  ~0.7 %. Se ve más de la foto; el margen de 1.5 % por lado sigue evitando que
+  el desplazamiento descubra bordes vacíos dentro del círculo.
+
 ## 0.5.0 — 2026-10-09
 
 ### Added
