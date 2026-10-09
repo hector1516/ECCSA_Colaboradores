@@ -6,7 +6,12 @@
 # Stage de compilación — el Dockerfile entero cabe en una pantalla.
 # ─────────────────────────────────────────────────────────────────────────────
 
-FROM python:3.11-slim
+# La imagen base sale del espejo público de AWS ECR, no de Docker Hub directo.
+# `public.ecr.aws/docker/library/*` es el MISMO oficial de Docker (bit a bit),
+# pero ECR Public no aplica el límite de pulls anónimos que sí tiene Docker Hub.
+# El 2026-10-09 la CI falló 10 veces seguidas con "429 Too Many Requests" al
+# resolver python:3.11-slim; el runner compartido ya no puede bajar de Docker Hub.
+FROM public.ecr.aws/docker/library/python:3.11-slim
 
 WORKDIR /app
 
