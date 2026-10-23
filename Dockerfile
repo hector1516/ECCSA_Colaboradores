@@ -6,12 +6,14 @@
 # Stage de compilación — el Dockerfile entero cabe en una pantalla.
 # ─────────────────────────────────────────────────────────────────────────────
 
-# La imagen base sale del espejo público de AWS ECR, no de Docker Hub directo.
-# `public.ecr.aws/docker/library/*` es el MISMO oficial de Docker (bit a bit),
-# pero ECR Public no aplica el límite de pulls anónimos que sí tiene Docker Hub.
-# El 2026-10-09 la CI falló 10 veces seguidas con "429 Too Many Requests" al
-# resolver python:3.11-slim; el runner compartido ya no puede bajar de Docker Hub.
-FROM public.ecr.aws/docker/library/python:3.11-slim
+# La imagen base sale del espejo pull-through de Google, no de Docker Hub ni de
+# ECR Public. Los dos oficiales aplican cuotas por IP a los pulls anonimos:
+#   · Docker Hub     -> 100 pulls / 6 h  (fallo el 2026-10-09, 10 veces seguidas)
+#   · ECR Public     -> cuota de DATOS por IP ("Data limit exceeded", 2026-10-23)
+# Los runners de GitHub comparten IP de salida, asi que la cuota la agota otro
+# inquilino y el build falla aunque el repo no cambie: reintentar no sirve.
+# mirror.gcr.io es el MISMO manifiesto (bit a bit) y no tiene esa cuota.
+FROM mirror.gcr.io/library/python:3.11-slim
 
 WORKDIR /app
 
