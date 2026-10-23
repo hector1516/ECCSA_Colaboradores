@@ -90,20 +90,25 @@ La app **no arranca sin secreto de panel** (`data/admin_secret.txt`, o
 ## Deploy
 
 ```
-push a main  →  GitHub Actions (runner en WebbApps)
-              →  docker build hector1516/colaboradores
-              →  /opt/apps/colaboradores/app.conf  (puerto 8105:8000)
-              →  secretos en /etc/colaboradores.env (600, fuera del repo)
+push a main  →  GitHub Actions (ubuntu-latest, EN LA NUBE)
+              →  ghcr.io/hector1516/colaboradores:latest + :<sha>
+              →  Arcane ve el digest nuevo
+              →  operador: Arcane → Projects → colaboradores → Updates → Update
 ```
 
-- **`APP_AUTO_START=0`**: el contenedor queda en `created` y NO arranca hasta
-  que alguien lo pida: `sudo bash /opt/apps/_lib/run_app.sh colaboradores`.
+- **El servidor NO compila.** La imagen se arma en `ubuntu-latest`; cuando Arcane
+  aplica el `Update`, WebbApps solo baja la imagen. Es un servidor de 1 vCPU.
+- **Arcane es el dueño del contenedor** (`docker.ecc-sa.com.mx`). No correr
+  `run_app.sh`, `docker rm` ni `docker restart`: sacan el contenedor del Project
+  y Arcane **deja de marcar actualizaciones**. Está en `ReglasUpdateColaboradores.md`.
 - **Nunca `docker rm -v`**: el volumen `colaboradores_data` guarda el secreto
   del panel.
 - **Producción = `HUB_DB_DATABASE=ECCSA_Admon`.** Para pruebas,
   `ECCSA_Admon_Pruebas`.
-- **Después de un deploy, verificar DENTRO del contenedor** (`grep`), no confiar
-  en el "success" del CI: el cache de Docker deja el contenedor viejo.
+- **Si Arcane no marca actualizaciones**, no adivines: copia
+  `ECCSAWebApps/tools/arcane-doctor.sh` al servidor y corre
+  `bash arcane-doctor.sh colaboradores`. Dice cuál de las tres causas es. Detalle
+  en `ReglasUpdateColaboradores.md` § *Arcane no muestra actualización*.
 
 ## Shell (ECCSA)
 
