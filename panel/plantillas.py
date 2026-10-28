@@ -17,7 +17,7 @@ import urllib.parse
 from panel import config
 from panel.lugar import lugar_de_ip
 
-_CSS_FILES = ("shell.css", "ficha.css")
+_CSS_FILES = ("shell.css", "ficha.css", "ficha_premium.css")
 
 
 def _leer_css():
@@ -286,6 +286,14 @@ def ficha_page(ficha, empresa):
                 descripcion=f"Datos de contacto de {nombre} en {nombre_empresa}",
                 robots=True)
         + '<body class="ficha">\n'
+        + '<div class="particulas" aria-hidden="true">'
+        + '<span class="particula" style="left:10%;animation-delay:0s"></span>'
+        + '<span class="particula" style="left:25%;animation-delay:2s"></span>'
+        + '<span class="particula" style="left:40%;animation-delay:4s"></span>'
+        + '<span class="particula" style="left:55%;animation-delay:1s"></span>'
+        + '<span class="particula" style="left:70%;animation-delay:3s"></span>'
+        + '<span class="particula" style="left:85%;animation-delay:5s"></span>'
+        + '</div>\n'
         + '<main class="tarjeta">\n'
         # Los retardos escalonados (0…4) van en el HTML porque la animación es
         # CSS puro: sin JavaScript, `--i` es la única forma de escalonar.
@@ -294,6 +302,7 @@ def ficha_page(ficha, empresa):
         + (f'<p class="puesto">{esc(puesto)}</p>' if puesto else "")
         + (f'<p class="empresa-nombre">{esc(nombre_empresa)}</p>'
            if nombre_empresa else "")
+        + '<div class="sello-profesional">✦ Profesional ECCSA</div>'
         + '</div>\n'
         + f'  <div class="acciones" style="--i:1">{acciones_html}</div>\n'
         + (f'  <ul class="datos anima" style="--i:2">{datos_html}</ul>\n'

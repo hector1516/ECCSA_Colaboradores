@@ -1,0 +1,238 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   EFECTOS PREMIUM — ECCSA_Colaboradores
+   ═══════════════════════════════════════════════════════════════════════
+   Efectos adicionales para hacer la ficha más impresionante y profesional.
+   Todo es CSS puro + mínimo JS. Se desactiva con prefers-reduced-motion.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ── 1. Fondo con gradiente animado sutil ── */
+body.ficha {
+	background: var(--color-bg);
+	background-image:
+		radial-gradient(ellipse 80% 50% at 20% 40%, rgba(255, 107, 0, .08) 0%, transparent 60%),
+		radial-gradient(ellipse 60% 40% at 80% 60%, rgba(255, 174, 0, .06) 0%, transparent 50%),
+		radial-gradient(ellipse 50% 30% at 50% 90%, rgba(34, 197, 94, .04) 0%, transparent 50%);
+	background-attachment: fixed;
+	animation: fondo-respirar 20s ease-in-out infinite alternate;
+}
+
+@keyframes fondo-respirar {
+	0%   { background-position: 0% 0%, 100% 100%, 50% 50%; }
+	50%  { background-position: 30% 20%, 70% 80%, 40% 60%; }
+	100% { background-position: 60% 40%, 40% 60%, 60% 40%; }
+}
+
+/* ── 2. Tarjeta con borde holográfico (iridiscente) ── */
+.tarjeta {
+	position: relative;
+	border: 1px solid transparent;
+	background-clip: padding-box;
+	overflow: visible;
+}
+
+.tarjeta::before {
+	content: "";
+	position: absolute;
+	inset: -2px;
+	border-radius: calc(var(--radius) + 2px);
+	background: conic-gradient(
+		from var(--holo-angle, 0deg),
+		#FF6B00, #FFAE00, #22C55E, #3B82F6, #8B5CF6,
+		#EC4899, #FF6B00
+	);
+	z-index: -1;
+	opacity: .35;
+	animation: holo-girar 8s linear infinite;
+}
+
+@keyframes holo-girar {
+	to { --holo-angle: 360deg; }
+}
+
+@property --holo-angle {
+	syntax: "<angle>";
+	inherits: false;
+	initial-value: 0deg;
+}
+
+/* ── 3. Efecto 3D tilt en la tarjeta (responde al touch/mouse) ── */
+.tarjeta.tilt-activo {
+	transform-style: preserve-3d;
+	perspective: 1000px;
+	transition: transform .1s ease-out;
+	will-change: transform;
+}
+
+/* ── 4. Nombre con efecto de revelado (scramble-like) ── */
+.nombre-revelar {
+	display: inline-block;
+	overflow: hidden;
+	white-space: nowrap;
+}
+
+.nombre-revelar span {
+	display: inline-block;
+	opacity: 0;
+	transform: translateY(100%);
+	animation: revelar-char .4s cubic-bezier(.22, .9, .3, 1) forwards;
+	animation-delay: calc(var(--char-i, 0) * 50ms + .3s);
+}
+
+@keyframes revelar-char {
+	to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── 5. Marco de foto con pulso de luz ── */
+.marco-foto {
+	box-shadow: 0 12px 40px rgba(0, 0, 0, .5), 0 0 0 0 rgba(255, 107, 0, .4);
+}
+
+.marco-foto::after {
+	content: "";
+	position: absolute;
+	inset: -12px;
+	border-radius: 999px;
+	border: 2px solid rgba(255, 107, 0, .3);
+	animation: pulso-luz 3s ease-in-out infinite;
+	pointer-events: none;
+	z-index: -2;
+}
+
+@keyframes pulso-luz {
+	0%, 100% { transform: scale(1); opacity: .6; }
+	50%      { transform: scale(1.08); opacity: .2; }
+}
+
+/* ── 6. Partículas flotantes de fondo ── */
+.particulas {
+	position: fixed;
+	inset: 0;
+	pointer-events: none;
+	z-index: -1;
+	overflow: hidden;
+}
+
+.particula {
+	position: absolute;
+	width: 4px;
+	height: 4px;
+	background: rgba(255, 107, 0, .4);
+	border-radius: 50%;
+	animation: flotar 15s linear infinite;
+}
+
+.particula:nth-child(2n) {
+	background: rgba(255, 174, 0, .3);
+	width: 3px;
+	height: 3px;
+	animation-duration: 18s;
+}
+
+.particula:nth-child(3n) {
+	background: rgba(34, 197, 94, .25);
+	width: 2px;
+	height: 2px;
+	animation-duration: 22s;
+}
+
+@keyframes flotar {
+	0%   { transform: translateY(100vh) translateX(0) scale(0); opacity: 0; }
+	10%  { opacity: 1; transform: translateY(90vh) translateX(10px) scale(1); }
+	90%  { opacity: 1; }
+	100% { transform: translateY(-10vh) translateX(-20px) scale(0.5); opacity: 0; }
+}
+
+/* ── 7. Sello de calidad / badge profesional ── */
+.sello-profesional {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 6px 12px;
+	background: linear-gradient(135deg, rgba(255, 107, 0, .15), rgba(255, 174, 0, .1));
+	border: 1px solid rgba(255, 107, 0, .3);
+	border-radius: 20px;
+	font-size: 11px;
+	font-weight: 600;
+	color: var(--color-primary-light);
+	text-transform: uppercase;
+	letter-spacing: .5px;
+	margin-top: 8px;
+	animation: sello-entrar .6s cubic-bezier(.22, .9, .3, 1) forwards;
+	opacity: 0;
+	animation-delay: .8s;
+}
+
+@keyframes sello-entrar {
+	from { opacity: 0; transform: scale(.8) translateY(10px); }
+	to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* ── 8. Línea decorativa animada bajo el nombre ── */
+.nombre::after {
+	content: "";
+	display: block;
+	width: 60px;
+	height: 3px;
+	margin: 8px auto 0;
+	background: linear-gradient(90deg, transparent, var(--color-primary), var(--color-primary-light), var(--color-primary), transparent);
+	background-size: 200% 100%;
+	animation: linea-brillo 3s ease-in-out infinite;
+	border-radius: 2px;
+}
+
+@keyframes linea-brillo {
+	0%, 100% { background-position: 0% 50%; }
+	50%      { background-position: 100% 50%; }
+}
+
+/* ── 9. Efecto de brillo en botones de acción ── */
+.accion {
+	position: relative;
+	overflow: hidden;
+}
+
+.accion::before {
+	content: "";
+	position: absolute;
+	top: 0;
+	left: -100%;
+	width: 100%;
+	height: 100%;
+	background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .15), transparent);
+	transition: left .5s ease;
+}
+
+.accion:hover::before {
+	left: 100%;
+}
+
+/* ── 10. Texto del puesto con efecto de máquina de escribir ── */
+.puesto-typing {
+	overflow: hidden;
+	white-space: nowrap;
+	border-right: 2px solid var(--color-primary);
+	animation: typing 2s steps(30, end) .5s forwards, blink .8s step-end infinite;
+	width: 0;
+}
+
+@keyframes typing {
+	to { width: 100%; }
+}
+
+@keyframes blink {
+	50% { border-color: transparent; }
+}
+
+/* ── prefers-reduced-motion ── */
+@media (prefers-reduced-motion: reduce) {
+	body.ficha,
+	.tarjeta::before,
+	.marco-foto::after,
+	.nombre::after,
+	.sello-profesional {
+		animation: none !important;
+	}
+
+	.particulas { display: none; }
+	.nombre-revelar span { opacity: 1; transform: none; }
+}
