@@ -35,6 +35,8 @@ ENV PORT=8000
 # Puerto interno. El host lo mapea en /opt/apps/colaboradores/app.conf.
 EXPOSE 8000
 
+ARG CACHEBUST=1
+RUN echo "Cache bust: $CACHEBUST"
 COPY . .
 
 # El código se copia al build, no se monta: la imagen es la unidad de despliegue
