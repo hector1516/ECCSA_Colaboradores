@@ -311,6 +311,7 @@ class Handler(BaseHTTPRequestHandler):
         ficha = db.obtener_persona(persona["Id"]) or {}
         ficha["Foto"] = persona.get("Foto") or ""
         ficha["FotoTipo"] = persona.get("FotoTipo") or ""
+        ficha["Stats"] = db.calcular_stats_usuario(persona["Id"])
 
         if len(partes) == 1:
             empresa = db.obtener_empresa()

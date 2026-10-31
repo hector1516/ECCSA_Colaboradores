@@ -273,6 +273,9 @@ def ficha_page(ficha, empresa):
 
     empresa_html = ""
     puesto = (ficha.get("Puesto") or "").strip()
+    stats = ficha.get("Stats") or {}
+    ovr = stats.get("ovr", 50)
+    posicion = stats.get("posicion", "Colaborador")
     if nombre_empresa or direccion or puesto:
         empresa_html = (
             f'<div class="empresa">'
@@ -304,6 +307,25 @@ def ficha_page(ficha, empresa):
            if nombre_empresa else "")
         + '<div class="sello-profesional">✦ Profesional ECCSA</div>'
         + '</div>\n'
+        + '  <div class="fifa-card anima" style="--i:1">'
+        + f'    <div class="fifa-ovr">{ovr}</div>'
+        + f'    <div class="fifa-pos">{esc(posicion)}</div>'
+        + '    <div class="fifa-stats">'
+        + f'      <div class="fifa-attr"><span class="fifa-val">{stats.get("productividad", 50)}</span><span class="fifa-lab">PRO</span></div>'
+        + f'      <div class="fifa-attr"><span class="fifa-val">{stats.get("ventas", 50)}</span><span class="fifa-lab">VEN</span></div>'
+        + f'      <div class="fifa-attr"><span class="fifa-val">{stats.get("asistencia", 50)}</span><span class="fifa-lab">ASI</span></div>'
+        + f'      <div class="fifa-attr"><span class="fifa-val">{stats.get("puntualidad", 50)}</span><span class="fifa-lab">PUN</span></div>'
+        + f'      <div class="fifa-attr"><span class="fifa-val">{stats.get("kilometros", 50)}</span><span class="fifa-lab">KM</span></div>'
+        + f'      <div class="fifa-attr"><span class="fifa-val">{stats.get("legends", 50)}</span><span class="fifa-lab">LEG</span></div>'
+        + f'      <div class="fifa-attr"><span class="fifa-val">{stats.get("colaboracion", 50)}</span><span class="fifa-lab">COL</span></div>'
+        + f'      <div class="fifa-attr"><span class="fifa-val">{stats.get("eficiencia", 50)}</span><span class="fifa-lab">EFI</span></div>'
+        + '    </div>'
+        + '    <div class="fifa-extra">'
+        + f'      <span>Racha: {stats.get("racha", 0)} dias</span>'
+        + f'      <span>Reportes: {stats.get("reportes_mes", 0)}</span>'
+        + f'      <span>Nivel: {stats.get("nivel_legends", "Bronce")}</span>'
+        + '    </div>'
+        + '  </div>\n'
         + f'  <div class="acciones" style="--i:1">{acciones_html}</div>\n'
         + (f'  <ul class="datos anima" style="--i:2">{datos_html}</ul>\n'
            if datos else "")

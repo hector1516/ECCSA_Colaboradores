@@ -236,3 +236,90 @@ body.ficha {
 	.particulas { display: none; }
 	.nombre-revelar span { opacity: 1; transform: none; }
 }
+
+/* === FIFA-style stats card === */
+.fifa-card {
+    background: linear-gradient(135deg, #0a1628 0%, #1a2a4a 50%, #0d1f3c 100%);
+    border: 2px solid #FFD700;
+    border-radius: 16px;
+    padding: 1.2rem;
+    margin: 1rem 0;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 8px 32px rgba(255, 215, 0, 0.15), 0 0 60px rgba(255, 107, 0, 0.08);
+    animation: fifa-enter 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.fifa-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: linear-gradient(135deg, rgba(255,215,0,0.05) 0%, transparent 50%, rgba(255,107,0,0.05) 100%);
+    pointer-events: none;
+}
+.fifa-ovr {
+    font-size: 3.5rem;
+    font-weight: 900;
+    color: #FFD700;
+    text-align: center;
+    line-height: 1;
+    text-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
+    position: relative;
+    z-index: 1;
+}
+.fifa-pos {
+    text-align: center;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #FF6B00;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 0.8rem;
+    position: relative;
+    z-index: 1;
+}
+.fifa-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.5rem;
+    margin-bottom: 0.8rem;
+    position: relative;
+    z-index: 1;
+}
+.fifa-attr {
+    text-align: center;
+    padding: 0.4rem 0.2rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 215, 0, 0.15);
+}
+.fifa-val {
+    display: block;
+    font-size: 1.4rem;
+    font-weight: 900;
+    color: #FFD700;
+    line-height: 1;
+}
+.fifa-lab {
+    display: block;
+    font-size: 0.6rem;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-top: 0.15rem;
+}
+.fifa-extra {
+    display: flex;
+    justify-content: space-around;
+    font-size: 0.75rem;
+    color: #94a3b8;
+    position: relative;
+    z-index: 1;
+    padding-top: 0.6rem;
+    border-top: 1px solid rgba(255, 215, 0, 0.15);
+}
+.fifa-extra span { font-weight: 600; }
+
+@keyframes fifa-enter {
+    from { opacity: 0; transform: scale(0.9) translateY(20px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+}

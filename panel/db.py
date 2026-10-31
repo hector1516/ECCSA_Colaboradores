@@ -112,6 +112,138 @@ def obtener_persona(id_usuario):
                 pass
 
 
+def calcular_stats_usuario(id_usuario):
+    """Calcula estadisticas tipo FIFA para un usuario basadas en datos reales."""
+    stats = {
+        "ovr": 50,
+        "productividad": 50, "ventas": 50, "asistencia": 50, "puntualidad": 50,
+        "kilometros": 50, "legends": 50, "colaboracion": 50, "eficiencia": 50,
+        "posicion": "Colaborador", "racha": 0, "mejor_racha": 0,
+        "reportes_mes": 0, "cotizaciones_mes": 0, "km_mes": 0,
+        "nivel_legends": "Bronce", "puntos_legends": 0,
+    }
+    if not id_usuario:
+        return stats
+    conn = None
+    try:
+        conn = get_connection()
+        cur = conn.cursor(as_dict=True)
+
+        # Reportes firmados (ultimos 30 dias)
+        cur.execute("""
+            SELECT COUNT(*) AS cnt FROM ReportesServicio
+            WHERE Tecnico LIKE (SELECT Nombre FROM HUB_Users WHERE Id = %s)
+              AND Estatus = 'FIRMADO'
+              AND Fecha >= DATEADD(day, -90, GETDATE())
+        """, (id_usuario,))
+        row = cur.fetchone()
+        reportes = row["cnt"] if row else 0
+        stats["reportes_mes"] = reportes
+        stats["productividad"] = min(99, reportes * 10)  # 10 reportes = 100
+
+        # Cotizaciones creadas (ultimos 30 dias)
+        cur.execute("""
+            SELECT COUNT(*) AS cnt FROM IndiceMateriales
+            WHERE Autor = (SELECT Nombre FROM HUB_Users WHERE Id = %s)
+              AND Fecha >= DATEADD(day, -90, GETDATE())
+        """, (id_usuario,))
+        row = cur.fetchone()
+        cotizaciones = row["cnt"] if row else 0
+        stats["cotizaciones_mes"] = cotizaciones
+        stats["ventas"] = min(99, cotizaciones * 15)  # 7 cotizaciones = 100+
+
+        # Kilometros (ultimos 30 dias)
+        cur.execute("""
+            SELECT ISNULL(MAX(Kilometros), 0) AS total FROM HUB_RegistroKilometros
+            WHERE IdUsuario = %s
+              AND FechaHora >= DATEADD(day, -90, GETDATE())
+        """, (id_usuario,))
+        row = cur.fetchone()
+        km = float(row["total"]) if row else 0
+        stats["km_mes"] = round(km)
+        stats["kilometros"] = min(99, int(km / 5000))  # 5000 km = 1 punto FIFA
+
+        # Legends points
+        cur.execute("""
+            SELECT PuntuacionTotal, Nivel, RachaDias FROM HUB_UserScores WHERE IdUsuario = %s
+        """, (id_usuario,))
+        row = cur.fetchone()
+        if row:
+            pts = row.get("PuntuacionTotal", 0) or 0
+            stats["puntos_legends"] = pts
+            stats["legends"] = min(99, pts // 5)  # 5 pts = 1 punto FIFA
+            stats["nivel_legends"] = row.get("Nivel", "Bronce") or "Bronce"
+            stats["racha"] = row.get("RachaDias", 0) or 0
+            stats["mejor_racha"] = row.get("RachaDias", 0) or 0
+
+        # Asistencia (ultimos 30 dias)
+        cur.execute("""
+            SELECT COUNT(DISTINCT CAST(p.FechaHora AS DATE)) AS dias
+            FROM HUB_NetworkPresence p
+            JOIN HUB_NetworkDevices d ON d.Id = p.IdDispositivo
+            WHERE d.IdUsuario = %s AND p.FechaHora >= DATEADD(day, -90, GETDATE())
+        """, (id_usuario,))
+        row = cur.fetchone()
+        dias_asist = row["dias"] if row else 0
+        stats["asistencia"] = min(99, int((dias_asist / 22) * 100))  # 22 dias laborales = 100
+
+        # Colaboracion (notas creadas)
+        cur.execute("""
+            SELECT COUNT(*) AS cnt FROM HUB_Notas WHERE IdUsuario = %s
+        """, (id_usuario,))
+        row = cur.fetchone()
+        notas = row["cnt"] if row else 0
+        stats["colaboracion"] = min(99, notas * 10)
+
+        # Eficiencia: horas por reporte (menos = mejor, inverso)
+        cur.execute("""
+            SELECT AVG(DATEDIFF(minute, FechaHoraInicio, FechaHoraFin) / 60.0) AS avg_h
+            FROM ReportesServicio
+            WHERE Tecnico LIKE (SELECT Nombre FROM HUB_Users WHERE Id = %s)
+              AND Estatus = 'FIRMADO'
+              AND FechaHoraInicio IS NOT NULL AND FechaHoraFin IS NOT NULL
+        """, (id_usuario,))
+        row = cur.fetchone()
+        avg_h = row["avg_h"] if row and row["avg_h"] else 5
+        stats["eficiencia"] = min(99, max(10, int(100 - (avg_h * 5))))  # 5h = 75, 10h = 50
+
+        # OVR (promedio ponderado)
+        stats["ovr"] = round(
+            stats["productividad"] * 0.20 +
+            stats["ventas"] * 0.15 +
+            stats["asistencia"] * 0.15 +
+            stats["puntualidad"] * 0.10 +
+            stats["kilometros"] * 0.10 +
+            stats["legends"] * 0.15 +
+            stats["colaboracion"] * 0.05 +
+            stats["eficiencia"] * 0.10
+        )
+
+        # Posicion
+        max_attr = max(stats["productividad"], stats["ventas"], stats["asistencia"],
+                       stats["legends"], stats["colaboracion"])
+        if stats["productividad"] == max_attr:
+            stats["posicion"] = "Tecnico"
+        elif stats["ventas"] == max_attr:
+            stats["posicion"] = "Comercial"
+        elif stats["legends"] == max_attr:
+            stats["posicion"] = "Leyenda"
+        elif stats["asistencia"] == max_attr:
+            stats["posicion"] = "Puntual"
+        else:
+            stats["posicion"] = "Colaborador"
+
+    except Exception as exc:
+        print(f"[stats] error calculando stats: {exc}", file=sys.stderr)
+    finally:
+        if conn is not None:
+            try:
+                conn.close()
+            except Exception:
+                pass
+    return stats
+
+
 def obtener_config(clave):
     """Un valor suelto de `HUB_Config`, o '' si no existe o falla la BD.
 
