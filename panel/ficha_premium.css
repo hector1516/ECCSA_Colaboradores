@@ -1,372 +1,130 @@
-/* ═══════════════════════════════════════════════════════════════════════
-   EFECTOS PREMIUM — ECCSA_Colaboradores
-   ═══════════════════════════════════════════════════════════════════════
-   Efectos adicionales para hacer la ficha más impresionante y profesional.
-   Todo es CSS puro + mínimo JS. Se desactiva con prefers-reduced-motion.
-   ═══════════════════════════════════════════════════════════════════════ */
+/* ficha_premium.css — Rediseño completo estilo profile page moderno */
 
-/* ── 1. Fondo con gradiente animado sutil ── */
-body.ficha {
-	background: var(--color-bg);
-	background-image:
-		radial-gradient(ellipse 80% 50% at 20% 40%, rgba(255, 107, 0, .08) 0%, transparent 60%),
-		radial-gradient(ellipse 60% 40% at 80% 60%, rgba(255, 174, 0, .06) 0%, transparent 50%),
-		radial-gradient(ellipse 50% 30% at 50% 90%, rgba(34, 197, 94, .04) 0%, transparent 50%);
-	background-attachment: fixed;
-	animation: fondo-respirar 20s ease-in-out infinite alternate;
-}
-
-@keyframes fondo-respirar {
-	0%   { background-position: 0% 0%, 100% 100%, 50% 50%; }
-	50%  { background-position: 30% 20%, 70% 80%, 40% 60%; }
-	100% { background-position: 60% 40%, 40% 60%, 60% 40%; }
-}
-
-/* ── 2. Tarjeta con borde holográfico (iridiscente) ── */
-.tarjeta {
-	position: relative;
-	border: 1px solid transparent;
-	background-clip: padding-box;
-	overflow: visible;
-}
-
-.tarjeta::before {
-	content: "";
-	position: absolute;
-	inset: -2px;
-	border-radius: calc(var(--radius) + 2px);
-	background: conic-gradient(
-		from var(--holo-angle, 0deg),
-		#FF6B00, #FFAE00, #22C55E, #3B82F6, #8B5CF6,
-		#EC4899, #FF6B00
-	);
-	z-index: -1;
-	opacity: .35;
-	animation: holo-girar 8s linear infinite;
-}
-
-@keyframes holo-girar {
-	to { --holo-angle: 360deg; }
-}
-
-@property --holo-angle {
-	syntax: "<angle>";
-	inherits: false;
-	initial-value: 0deg;
-}
-
-/* ── 3. Efecto 3D tilt en la tarjeta (responde al touch/mouse) ── */
-.tarjeta.tilt-activo {
-	transform-style: preserve-3d;
-	perspective: 1000px;
-	transition: transform .1s ease-out;
-	will-change: transform;
-}
-
-/* ── 4. Nombre con efecto de revelado (scramble-like) ── */
-.nombre-revelar {
-	display: inline-block;
-	overflow: hidden;
-	white-space: nowrap;
-}
-
-.nombre-revelar span {
-	display: inline-block;
-	opacity: 0;
-	transform: translateY(100%);
-	animation: revelar-char .4s cubic-bezier(.22, .9, .3, 1) forwards;
-	animation-delay: calc(var(--char-i, 0) * 50ms + .3s);
-}
-
-@keyframes revelar-char {
-	to { opacity: 1; transform: translateY(0); }
-}
-
-/* ── 5. Marco de foto con pulso de luz ── */
-.marco-foto {
-	box-shadow: 0 12px 40px rgba(0, 0, 0, .5), 0 0 0 0 rgba(255, 107, 0, .4);
-}
-
-.marco-foto::after {
-	content: "";
-	position: absolute;
-	inset: -12px;
-	border-radius: 999px;
-	border: 2px solid rgba(255, 107, 0, .3);
-	animation: pulso-luz 3s ease-in-out infinite;
-	pointer-events: none;
-	z-index: -2;
-}
-
-@keyframes pulso-luz {
-	0%, 100% { transform: scale(1); opacity: .6; }
-	50%      { transform: scale(1.08); opacity: .2; }
-}
-
-/* ── 6. Partículas flotantes de fondo ── */
-.particulas {
-	position: fixed;
-	inset: 0;
-	pointer-events: none;
-	z-index: -1;
-	overflow: hidden;
-}
-
-.particula {
-	position: absolute;
-	width: 4px;
-	height: 4px;
-	background: rgba(255, 107, 0, .4);
-	border-radius: 50%;
-	animation: flotar 15s linear infinite;
-}
-
-.particula:nth-child(2n) {
-	background: rgba(255, 174, 0, .3);
-	width: 3px;
-	height: 3px;
-	animation-duration: 18s;
-}
-
-.particula:nth-child(3n) {
-	background: rgba(34, 197, 94, .25);
-	width: 2px;
-	height: 2px;
-	animation-duration: 22s;
-}
-
-@keyframes flotar {
-	0%   { transform: translateY(100vh) translateX(0) scale(0); opacity: 0; }
-	10%  { opacity: 1; transform: translateY(90vh) translateX(10px) scale(1); }
-	90%  { opacity: 1; }
-	100% { transform: translateY(-10vh) translateX(-20px) scale(0.5); opacity: 0; }
-}
-
-/* ── 7. Sello de calidad / badge profesional ── */
-.sello-profesional {
-	display: inline-flex;
-	align-items: center;
-	gap: 6px;
-	padding: 6px 12px;
-	background: linear-gradient(135deg, rgba(255, 107, 0, .15), rgba(255, 174, 0, .1));
-	border: 1px solid rgba(255, 107, 0, .3);
-	border-radius: 20px;
-	font-size: 11px;
-	font-weight: 600;
-	color: var(--color-primary-light);
-	text-transform: uppercase;
-	letter-spacing: .5px;
-	margin-top: 8px;
-	animation: sello-entrar .6s cubic-bezier(.22, .9, .3, 1) forwards;
-	opacity: 0;
-	animation-delay: .8s;
-}
-
-@keyframes sello-entrar {
-	from { opacity: 0; transform: scale(.8) translateY(10px); }
-	to   { opacity: 1; transform: scale(1) translateY(0); }
-}
-
-/* ── 8. Línea decorativa animada bajo el nombre ── */
-.nombre::after {
-	content: "";
-	display: block;
-	width: 60px;
-	height: 3px;
-	margin: 8px auto 0;
-	background: linear-gradient(90deg, transparent, var(--color-primary), var(--color-primary-light), var(--color-primary), transparent);
-	background-size: 200% 100%;
-	animation: linea-brillo 3s ease-in-out infinite;
-	border-radius: 2px;
-}
-
-@keyframes linea-brillo {
-	0%, 100% { background-position: 0% 50%; }
-	50%      { background-position: 100% 50%; }
-}
-
-/* ── 9. Efecto de brillo en botones de acción ── */
-.accion {
-	position: relative;
-	overflow: hidden;
-}
-
-.accion::before {
-	content: "";
-	position: absolute;
-	top: 0;
-	left: -100%;
-	width: 100%;
-	height: 100%;
-	background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .15), transparent);
-	transition: left .5s ease;
-}
-
-.accion:hover::before {
-	left: 100%;
-}
-
-/* ── 10. Texto del puesto con efecto de máquina de escribir ── */
-.puesto-typing {
-	overflow: hidden;
-	white-space: nowrap;
-	border-right: 2px solid var(--color-primary);
-	animation: typing 2s steps(30, end) .5s forwards, blink .8s step-end infinite;
-	width: 0;
-}
-
-@keyframes typing {
-	to { width: 100%; }
-}
-
-@keyframes blink {
-	50% { border-color: transparent; }
-}
-
-/* ── prefers-reduced-motion ── */
-@media (prefers-reduced-motion: reduce) {
-	body.ficha,
-	.tarjeta::before,
-	.marco-foto::after,
-	.nombre::after,
-	.sello-profesional {
-		animation: none !important;
-	}
-
-	.particulas { display: none; }
-	.nombre-revelar span { opacity: 1; transform: none; }
-}
-
-/* === FIFA-style stats card === */
-.fifa-card {
-    background: linear-gradient(135deg, #0a1628 0%, #1a2a4a 50%, #0d1f3c 100%);
-    border: 2px solid #FFD700;
-    border-radius: 16px;
-    padding: 1.2rem;
-    margin: 1rem 0;
-    position: relative;
-    overflow: hidden;
-    box-shadow: 0 8px 32px rgba(255, 215, 0, 0.15), 0 0 60px rgba(255, 107, 0, 0.08);
-    animation: fifa-enter 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-.fifa-card::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background: linear-gradient(135deg, rgba(255,215,0,0.05) 0%, transparent 50%, rgba(255,107,0,0.05) 100%);
-    pointer-events: none;
-}
-.fifa-ovr {
-    font-size: 3.5rem;
-    font-weight: 900;
-    color: #FFD700;
-    text-align: center;
-    line-height: 1;
-    text-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
-    position: relative;
-    z-index: 1;
-}
-.fifa-pos {
-    text-align: center;
-    font-size: 0.8rem;
-    font-weight: 700;
-    color: #FF6B00;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    margin-bottom: 0.8rem;
-    position: relative;
-    z-index: 1;
-}
-.fifa-stats {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 0.5rem;
-    margin-bottom: 0.8rem;
-    position: relative;
-    z-index: 1;
-}
-.fifa-attr {
-    text-align: center;
-    padding: 0.4rem 0.2rem;
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 8px;
-    border: 1px solid rgba(255, 215, 0, 0.15);
-}
-.fifa-val {
-    display: block;
-    font-size: 1.4rem;
-    font-weight: 900;
-    color: #FFD700;
-    line-height: 1;
-}
-.fifa-lab {
-    display: block;
-    font-size: 0.6rem;
-    color: #94a3b8;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    margin-top: 0.15rem;
-}
-.fifa-extra {
-    display: flex;
-    justify-content: space-around;
-    font-size: 0.75rem;
-    color: #94a3b8;
-    position: relative;
-    z-index: 1;
-    padding-top: 0.6rem;
-    border-top: 1px solid rgba(255, 215, 0, 0.15);
-}
-.fifa-extra span { font-weight: 600; }
-
-@keyframes fifa-enter {
-    from { opacity: 0; transform: scale(0.9) translateY(20px); }
-    to { opacity: 1; transform: scale(1) translateY(0); }
-}
-
-
-/* === FIFA Card - Complete Redesign === */
-body.fifa-page {
-    background: linear-gradient(135deg, #0a0f1e 0%, #1a1a3e 50%, #0d1b2a 100%);
+/* === Profile Page Layout === */
+body.fifa-page, body.profile-page {
+    background: linear-gradient(135deg, #0a0f1e 0%, #1a1a3e 30%, #0d1b2a 70%, #0a0f1e 100%);
     min-height: 100vh;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 1rem;
+    padding: 1.5rem;
     margin: 0;
+    font-family: 'Outfit', system-ui, sans-serif;
 }
 
-.fifa-bg {
+.profile-bg {
     position: fixed;
     inset: 0;
     background: 
-        radial-gradient(circle at 20% 80%, rgba(255, 107, 0, 0.08) 0%, transparent 50%),
-        radial-gradient(circle at 80% 20%, rgba(255, 215, 0, 0.05) 0%, transparent 50%),
-        radial-gradient(circle at 50% 50%, rgba(30, 41, 59, 0.3) 0%, transparent 70%);
+        radial-gradient(circle at 15% 85%, rgba(255, 107, 0, 0.08) 0%, transparent 40%),
+        radial-gradient(circle at 85% 15%, rgba(255, 215, 0, 0.05) 0%, transparent 40%),
+        radial-gradient(circle at 50% 50%, rgba(30, 41, 59, 0.2) 0%, transparent 60%);
     pointer-events: none;
     z-index: 0;
+    animation: bg-pulse 8s ease-in-out infinite;
 }
 
-.fifa-container {
+@keyframes bg-pulse {
+    0%, 100% { opacity: 0.8; }
+    50% { opacity: 1; }
+}
+
+.profile-container {
     position: relative;
     z-index: 1;
     width: 100%;
-    max-width: 420px;
+    max-width: 480px;
     margin: 0 auto;
 }
 
-.fifa-card-wrapper {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 1rem;
+/* === Hero Section === */
+.profile-hero {
+    text-align: center;
+    margin-bottom: 1.5rem;
+    animation: hero-enter 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-.fifa-card {
+@keyframes hero-enter {
+    from { opacity: 0; transform: translateY(-20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.hero-avatar {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    margin: 0 auto 1rem;
+    overflow: hidden;
+    border: 4px solid rgba(255, 215, 0, 0.4);
+    box-shadow: 0 0 30px rgba(255, 215, 0, 0.2), 0 8px 24px rgba(0, 0, 0, 0.4);
+    position: relative;
+}
+
+.hero-avatar .marco-foto {
     width: 100%;
-    max-width: 380px;
+    height: 100%;
+    border-radius: 50%;
+    overflow: hidden;
+}
+
+.hero-avatar .marco-foto img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.hero-avatar .iniciales {
+    font-size: 2.5rem;
+    font-weight: 900;
+    color: #FFD700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #1a2a4a, #0d1f3c);
+}
+
+.hero-name {
+    font-size: 1.8rem;
+    font-weight: 900;
+    color: #f1f5f9;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin: 0 0 0.2rem;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+.hero-puesto {
+    font-size: 0.9rem;
+    color: #94a3b8;
+    margin: 0 0 0.1rem;
+}
+
+.hero-empresa {
+    font-size: 0.85rem;
+    color: #FF6B00;
+    font-weight: 600;
+    margin: 0 0 0.5rem;
+}
+
+.hero-badge {
+    display: inline-block;
+    background: linear-gradient(135deg, #FF6B00, #FF8C00);
+    color: white;
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 0.3rem 0.8rem;
+    border-radius: 999px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    box-shadow: 0 2px 8px rgba(255, 107, 0, 0.3);
+}
+
+/* === FIFA Card === */
+.profile-card.fifa-card {
     background: linear-gradient(160deg, #1a2a4a 0%, #0d1f3c 40%, #0a1628 100%);
-    border: 3px solid #FFD700;
+    border: 2px solid #FFD700;
     border-radius: 20px;
     padding: 1.5rem;
     position: relative;
@@ -375,10 +133,10 @@ body.fifa-page {
         0 20px 60px rgba(0, 0, 0, 0.5),
         0 0 40px rgba(255, 215, 0, 0.15),
         inset 0 1px 0 rgba(255, 255, 255, 0.1);
-    animation: fifa-enter 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation: fifa-enter 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both;
 }
 
-.fifa-card::before {
+.profile-card.fifa-card::before {
     content: '';
     position: absolute;
     top: 0; left: 0; right: 0; bottom: 0;
@@ -388,7 +146,7 @@ body.fifa-page {
     z-index: 0;
 }
 
-.fifa-card::after {
+.profile-card.fifa-card::after {
     content: '';
     position: absolute;
     top: -50%; left: -50%;
@@ -409,8 +167,7 @@ body.fifa-page {
     to { opacity: 1; transform: scale(1) translateY(0); }
 }
 
-/* Header: OVR + Position + Photo */
-.fifa-header {
+.card-header {
     display: flex;
     align-items: flex-start;
     gap: 1rem;
@@ -419,7 +176,7 @@ body.fifa-page {
     z-index: 1;
 }
 
-.fifa-rating {
+.card-ovr {
     font-size: 3.2rem;
     font-weight: 900;
     color: #FFD700;
@@ -428,7 +185,7 @@ body.fifa-page {
     min-width: 60px;
 }
 
-.fifa-position {
+.card-pos {
     font-size: 1.1rem;
     font-weight: 800;
     color: #FF6B00;
@@ -437,72 +194,7 @@ body.fifa-page {
     margin-top: 0.2rem;
 }
 
-.fifa-photo-frame {
-    flex: 1;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
-.fifa-photo-frame .marco-foto {
-    width: 120px;
-    height: 120px;
-    border-radius: 50%;
-    overflow: hidden;
-    border: 3px solid rgba(255, 215, 0, 0.5);
-    box-shadow: 0 0 20px rgba(255, 215, 0, 0.2);
-}
-
-.fifa-photo-frame .marco-foto img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-.fifa-photo-frame .iniciales {
-    font-size: 2.5rem;
-    font-weight: 900;
-    color: #FFD700;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(135deg, #1a2a4a, #0d1f3c);
-}
-
-/* Body: Name + Company */
-.fifa-body {
-    text-align: center;
-    margin-bottom: 1rem;
-    position: relative;
-    z-index: 1;
-}
-
-.fifa-name {
-    font-size: 1.6rem;
-    font-weight: 900;
-    color: #f1f5f9;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
-    margin-bottom: 0.2rem;
-}
-
-.fifa-puesto {
-    font-size: 0.85rem;
-    color: #94a3b8;
-    margin-bottom: 0.1rem;
-}
-
-.fifa-empresa {
-    font-size: 0.8rem;
-    color: #FF6B00;
-    font-weight: 600;
-}
-
-/* Stats grid */
-.fifa-stats-grid {
+.card-stats {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     gap: 0.5rem;
@@ -511,7 +203,7 @@ body.fifa-page {
     z-index: 1;
 }
 
-.fifa-stat {
+.card-stat {
     text-align: center;
     padding: 0.5rem 0.2rem;
     background: rgba(255, 255, 255, 0.05);
@@ -519,7 +211,7 @@ body.fifa-page {
     border: 1px solid rgba(255, 215, 0, 0.15);
 }
 
-.stat-val {
+.card-stat .stat-num {
     display: block;
     font-size: 1.5rem;
     font-weight: 900;
@@ -527,7 +219,7 @@ body.fifa-page {
     line-height: 1;
 }
 
-.stat-lab {
+.card-stat .stat-lab {
     display: block;
     font-size: 0.6rem;
     color: #94a3b8;
@@ -536,8 +228,7 @@ body.fifa-page {
     margin-top: 0.2rem;
 }
 
-/* Extra stats */
-.fifa-extra {
+.card-extra {
     display: flex;
     justify-content: space-around;
     font-size: 0.75rem;
@@ -548,106 +239,150 @@ body.fifa-page {
     z-index: 1;
 }
 
-.fifa-extra span {
+.card-extra span {
     font-weight: 600;
 }
 
-/* Actions */
-.fifa-actions {
+/* === Actions === */
+.profile-actions {
     display: flex;
     flex-wrap: wrap;
     gap: 0.5rem;
     justify-content: center;
     margin-top: 1rem;
-    position: relative;
-    z-index: 1;
 }
 
-.fifa-actions .accion {
+.profile-actions .accion {
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;
-    padding: 0.5rem 1rem;
-    border-radius: 8px;
+    padding: 0.6rem 1.2rem;
+    border-radius: 10px;
     background: rgba(255, 107, 0, 0.15);
     border: 1px solid rgba(255, 107, 0, 0.3);
     color: #FF6B00;
-    font-size: 0.8rem;
+    font-size: 0.85rem;
     font-weight: 600;
     text-decoration: none;
     transition: all 0.2s;
 }
 
-.fifa-actions .accion:hover {
+.profile-actions .accion:hover {
     background: rgba(255, 107, 0, 0.25);
     border-color: #FF6B00;
     transform: translateY(-2px);
 }
 
-.fifa-actions .accion.principal {
+.profile-actions .accion.principal {
     background: linear-gradient(135deg, #FF6B00, #FF8C00);
     color: white;
     border: none;
 }
 
-/* Contact info */
-.fifa-contact {
+/* === Contact Info === */
+.profile-contact {
     margin-top: 1rem;
-    padding: 0.75rem;
+    padding: 0.75rem 1rem;
     background: rgba(255, 255, 255, 0.03);
-    border-radius: 10px;
+    border-radius: 12px;
     border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-.fifa-contact li {
+.profile-contact li {
     list-style: none;
-    padding: 0.3rem 0;
-    font-size: 0.8rem;
+    padding: 0.4rem 0;
+    font-size: 0.85rem;
     color: #94a3b8;
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
 }
 
-.fifa-contact li:last-child { border-bottom: none; }
+.profile-contact li:last-child { border-bottom: none; }
 
-.fifa-contact .val {
+.profile-contact .val {
     color: #f1f5f9;
     text-decoration: none;
 }
 
-.fifa-contact .rot {
-    font-size: 0.7rem;
+.profile-contact .rot {
+    font-size: 0.75rem;
     color: #64748b;
-    margin-right: 0.5rem;
+    min-width: 70px;
 }
 
-/* Responsive */
+/* === Empresa === */
+.empresa {
+    margin-top: 1rem;
+    padding: 0.75rem 1rem;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    text-align: center;
+}
+
+.emp-nombre { font-size: 0.9rem; font-weight: 700; color: #f1f5f9; }
+.emp-dir { font-size: 0.75rem; color: #94a3b8; margin-top: 0.2rem; }
+
+.redes { display: flex; justify-content: center; gap: 0.5rem; margin-top: 0.5rem; }
+.red {
+    width: 32px; height: 32px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(255, 255, 255, 0.08);
+    color: #94a3b8; text-decoration: none; font-size: 0.8rem;
+    transition: all 0.2s;
+}
+.red:hover { background: rgba(255, 107, 0, 0.2); color: #FF6B00; }
+
+/* === Footer === */
+body.profile-page footer.pie {
+    text-align: center;
+    margin-top: 1rem;
+    font-size: 0.7rem;
+    color: #64748b;
+}
+
+/* === Responsive === */
 @media (max-width: 480px) {
-    .fifa-card {
-        max-width: 100%;
-        padding: 1rem;
-    }
-    .fifa-ovr { font-size: 2.5rem; }
-    .fifa-name { font-size: 1.3rem; }
+    .fifa-card { padding: 1rem; }
+    .card-ovr { font-size: 2.5rem; }
+    .fifa-name { font-size: 1.4rem; }
     .stat-val { font-size: 1.2rem; }
-    .fifa-stats-grid { gap: 0.35rem; }
-    .fifa-photo-frame .marco-foto { width: 90px; height: 90px; }
+    .card-stats { gap: 0.35rem; }
+    .hero-avatar { width: 100px; height: 100px; }
+    .hero-name { font-size: 1.5rem; }
+    .profile-actions { flex-direction: column; }
+    .profile-actions .accion { width: 100%; justify-content: center; }
 }
 
 @media (min-width: 481px) and (max-width: 768px) {
-    .fifa-card {
-        max-width: 400px;
-    }
+    .fifa-card { max-width: 400px; }
+    .profile-container { max-width: 440px; }
 }
 
 @media (min-width: 769px) {
-    .fifa-card {
-        max-width: 420px;
-    }
-    .fifa-container {
-        max-width: 460px;
-    }
+    .fifa-card { max-width: 420px; }
+    .profile-container { max-width: 480px; }
 }
 
-/* Remove old elements visibility */
-body.fifa-page .particulas { display: none; }
-body.fifa-page footer.pie { display: none; }
+/* Hide old elements */
+body.profile-page .particulas { display: none; }
+body.profile-page main.tarjeta { display: none; }
+'''
+
+# Remove old fifa-card CSS and replace with new
+# Find the start of the old fifa CSS
+old_marker = "/* === FIFA-style stats card === */"
+idx = content.find(old_marker)
+if idx >= 0:
+    content = content[:idx] + css
+else:
+    content = content + css
+
+with open(path, "w", encoding="utf-8") as f:
+    f.write(content)
+print("Done")
+'@
+$script | Out-File -FilePath "C:\OpenCodeProyects\ECCSAWebApps\ECCSA_Colaboradores\panel\rewrite_css.py" -Encoding UTF8
+python "C:\OpenCodeProyects\ECCSAWebApps\ECCSA_Colaboradores\panel\rewrite_css.py"

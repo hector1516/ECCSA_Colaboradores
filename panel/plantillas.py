@@ -284,64 +284,62 @@ def ficha_page(ficha, empresa):
             f'<div class="redes">{redes_html}</div>'
             f'</div>')
 
+    # FIFA stats
+    stats = ficha.get("Stats") or {}
+    ovr = stats.get("ovr", 50)
+    posicion = stats.get("posicion", "Colaborador")
+
     return (
         _cabeza(nombre or "Colaborador",
-                descripcion=f"FIFA Card de {nombre} - ECCSA Automation",
+                descripcion=f"Perfil profesional de {nombre} - ECCSA Automation",
                 robots=True)
-        + '<body class="ficha fifa-page">\n'
-        + '<div class="fifa-bg" aria-hidden="true"></div>\n'
-        + '<div class="particulas" aria-hidden="true">'
-        + '<span class="particula" style="left:10%;animation-delay:0s"></span>'
-        + '<span class="particula" style="left:25%;animation-delay:2s"></span>'
-        + '<span class="particula" style="left:40%;animation-delay:4s"></span>'
-        + '<span class="particula" style="left:55%;animation-delay:1s"></span>'
-        + '<span class="particula" style="left:70%;animation-delay:3s"></span>'
-        + '<span class="particula" style="left:85%;animation-delay:5s"></span>'
+        + '<body class="ficha profile-page">\n'
+        + '<div class="profile-bg" aria-hidden="true"></div>\n'
+        + '<div class="particulas" aria-hidden="true">\n'
+        + '<span class="particula" style="left:10%;animation-delay:0s"></span>\n'
+        + '<span class="particula" style="left:30%;animation-delay:2s"></span>\n'
+        + '<span class="particula" style="left:50%;animation-delay:4s"></span>\n'
+        + '<span class="particula" style="left:70%;animation-delay:1s"></span>\n'
+        + '<span class="particula" style="left:90%;animation-delay:3s"></span>\n'
         + '</div>\n'
-        + '<main class="fifa-container">\n'
-        # === FIFA CARD ===
-        + '  <div class="fifa-card-wrapper">\n'
-        + '    <div class="fifa-card">\n'
-        # Card header: OVR + Position + Photo
-        + '      <div class="fifa-header">\n'
-        + f'        <div class="fifa-rating">{ovr}</div>\n'
-        + f'        <div class="fifa-position">{esc(posicion[:3].upper())}</div>\n'
-        + '        <div class="fifa-photo-frame">\n'
-        + f'          {identidad}\n'
-        + '        </div>\n'
-        + '      </div>\n'
-        # Card body: Name + Company
-        + '      <div class="fifa-body">\n'
-        + f'        <div class="fifa-name">{esc(nombre)}</div>\n'
-        + (f'<div class="fifa-puesto">{esc(puesto)}</div>\n' if puesto else "")
-        + (f'<div class="fifa-empresa">{esc(nombre_empresa)}</div>\n' if nombre_empresa else "")
-        + '      </div>\n'
-        # Stats
-        + '      <div class="fifa-stats-grid">\n'
-        + f'        <div class="fifa-stat"><span class="stat-val">{stats.get("productividad", 50)}</span><span class="stat-lab">PRO</span></div>\n'
-        + f'        <div class="fifa-stat"><span class="stat-val">{stats.get("ventas", 50)}</span><span class="stat-lab">VEN</span></div>\n'
-        + f'        <div class="fifa-stat"><span class="stat-val">{stats.get("asistencia", 50)}</span><span class="stat-lab">ASI</span></div>\n'
-        + f'        <div class="fifa-stat"><span class="stat-val">{stats.get("puntualidad", 50)}</span><span class="stat-lab">PUN</span></div>\n'
-        + f'        <div class="fifa-stat"><span class="stat-val">{stats.get("kilometros", 50)}</span><span class="stat-lab">KM</span></div>\n'
-        + f'        <div class="fifa-stat"><span class="stat-val">{stats.get("legends", 50)}</span><span class="stat-lab">LEG</span></div>\n'
-        + f'        <div class="fifa-stat"><span class="stat-val">{stats.get("colaboracion", 50)}</span><span class="stat-lab">COL</span></div>\n'
-        + f'        <div class="fifa-stat"><span class="stat-val">{stats.get("eficiencia", 50)}</span><span class="stat-lab">EFI</span></div>\n'
-        + '      </div>\n'
-        # Extra stats
-        + '      <div class="fifa-extra">\n'
-        + f'        <span>Racha: {stats.get("racha", 0)} dias</span>\n'
-        + f'        <span>Reportes: {stats.get("reportes_mes", 0)}</span>\n'
-        + f'        <span>Nivel: {stats.get("nivel_legends", "Bronce")}</span>\n'
-        + '      </div>\n'
-        + '    </div>\n'
-        # === ACTIONS ===
-        + '    <div class="fifa-actions">\n'
-        + f'      {acciones_html}\n'
-        + '    </div>\n'
-        # === CONTACT INFO ===
-        + (f'    <div class="fifa-contact">\n{datos_html}\n    </div>\n' if datos else "")
-        + (f'    {empresa_html}\n' if empresa_html else "")
+        + '<main class="profile-container">\n'
+        # === HERO SECTION ===
+        + '  <div class="profile-hero">\n'
+        + f'    <div class="hero-avatar">{identidad}</div>\n'
+        + f'    <h1 class="hero-name">{esc(nombre)}</h1>\n'
+        + (f'<p class="hero-puesto">{esc(puesto)}</p>\n' if puesto else "")
+        + (f'<p class="hero-empresa">{esc(nombre_empresa)}</p>\n' if nombre_empresa else "")
+        + '    <div class="hero-badge">Profesional ECCSA</div>\n'
         + '  </div>\n'
+        # === FIFA CARD ===
+        + '  <div class="profile-card fifa-card">\n'
+        + '    <div class="card-header">\n'
+        + f'      <div class="card-ovr">{ovr}</div>\n'
+        + f'      <div class="card-pos">{esc(posicion[:3].upper())}</div>\n'
+        + '    </div>\n'
+        + '    <div class="card-stats">\n'
+        + f'      <div class="card-stat"><span class="stat-num">{stats.get("productividad", 50)}</span><span class="stat-lab">PRO</span></div>\n'
+        + f'      <div class="card-stat"><span class="stat-num">{stats.get("ventas", 50)}</span><span class="stat-lab">VEN</span></div>\n'
+        + f'      <div class="card-stat"><span class="stat-num">{stats.get("asistencia", 50)}</span><span class="stat-lab">ASI</span></div>\n'
+        + f'      <div class="card-stat"><span class="stat-num">{stats.get("puntualidad", 50)}</span><span class="stat-lab">PUN</span></div>\n'
+        + f'      <div class="card-stat"><span class="stat-num">{stats.get("kilometros", 50)}</span><span class="stat-lab">KM</span></div>\n'
+        + f'      <div class="card-stat"><span class="stat-num">{stats.get("legends", 50)}</span><span class="stat-lab">LEG</span></div>\n'
+        + f'      <div class="card-stat"><span class="stat-num">{stats.get("colaboracion", 50)}</span><span class="stat-lab">COL</span></div>\n'
+        + f'      <div class="card-stat"><span class="stat-num">{stats.get("eficiencia", 50)}</span><span class="stat-lab">EFI</span></div>\n'
+        + '    </div>\n'
+        + '    <div class="card-extra">\n'
+        + f'      <span>🔥 Racha: {stats.get("racha", 0)} días</span>\n'
+        + f'      <span>📋 Reportes: {stats.get("reportes_mes", 0)}</span>\n'
+        + f'      <span>⭐ Nivel: {stats.get("nivel_legends", "Bronce")}</span>\n'
+        + '    </div>\n'
+        + '  </div>\n'
+        # === ACTIONS ===
+        + '  <div class="profile-actions">\n'
+        + f'    {acciones_html}\n'
+        + '  </div>\n'
+        # === CONTACT INFO ===
+        + (f'  <div class="profile-contact">\n{datos_html}\n  </div>\n' if datos else "")
+        + (f'  {empresa_html}\n' if empresa_html else "")
         + '</main>\n'
         + '<footer class="pie">\n'
         + f'<span>{esc(config.APP_NAME)} v{esc(config.APP_VERSION)}</span>\n'
