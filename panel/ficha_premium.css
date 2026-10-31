@@ -1,15 +1,16 @@
-/* ficha_premium.css — Rediseño completo estilo profile page moderno */
+/* ficha_premium.css — Rediseño completo estilo Apple + Radar Chart */
 
 /* === Profile Page Layout === */
-body.fifa-page, body.profile-page {
+body.profile-page {
     background: linear-gradient(135deg, #0a0f1e 0%, #1a1a3e 30%, #0d1b2a 70%, #0a0f1e 100%);
     min-height: 100vh;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 1.5rem;
+    padding: 1rem;
     margin: 0;
-    font-family: 'Outfit', system-ui, sans-serif;
+    font-family: 'Outfit', system-ui, -apple-system, sans-serif;
+    color: #f1f5f9;
 }
 
 .profile-bg {
@@ -33,12 +34,12 @@ body.fifa-page, body.profile-page {
     position: relative;
     z-index: 1;
     width: 100%;
-    max-width: 480px;
+    max-width: 420px;
     margin: 0 auto;
 }
 
 /* === Hero Section === */
-.profile-hero {
+.hero {
     text-align: center;
     margin-bottom: 1.5rem;
     animation: hero-enter 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
@@ -50,12 +51,12 @@ body.fifa-page, body.profile-page {
 }
 
 .hero-avatar {
-    width: 120px;
-    height: 120px;
+    width: 110px;
+    height: 110px;
     border-radius: 50%;
     margin: 0 auto 1rem;
     overflow: hidden;
-    border: 4px solid rgba(255, 215, 0, 0.4);
+    border: 3px solid rgba(255, 215, 0, 0.4);
     box-shadow: 0 0 30px rgba(255, 215, 0, 0.2), 0 8px 24px rgba(0, 0, 0, 0.4);
     position: relative;
 }
@@ -86,7 +87,7 @@ body.fifa-page, body.profile-page {
 }
 
 .hero-name {
-    font-size: 1.8rem;
+    font-size: 1.6rem;
     font-weight: 900;
     color: #f1f5f9;
     text-transform: uppercase;
@@ -102,7 +103,7 @@ body.fifa-page, body.profile-page {
 }
 
 .hero-empresa {
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     color: #FF6B00;
     font-weight: 600;
     margin: 0 0 0.5rem;
@@ -121,125 +122,131 @@ body.fifa-page, body.profile-page {
     box-shadow: 0 2px 8px rgba(255, 107, 0, 0.3);
 }
 
-/* === FIFA Card === */
-.profile-card.fifa-card {
-    background: linear-gradient(160deg, #1a2a4a 0%, #0d1f3c 40%, #0a1628 100%);
-    border: 2px solid #FFD700;
-    border-radius: 20px;
-    padding: 1.5rem;
-    position: relative;
-    overflow: hidden;
-    box-shadow: 
-        0 20px 60px rgba(0, 0, 0, 0.5),
-        0 0 40px rgba(255, 215, 0, 0.15),
-        inset 0 1px 0 rgba(255, 255, 255, 0.1);
-    animation: fifa-enter 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both;
-}
-
-.profile-card.fifa-card::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background: 
-        linear-gradient(135deg, rgba(255, 215, 0, 0.08) 0%, transparent 30%, transparent 70%, rgba(255, 107, 0, 0.05) 100%);
-    pointer-events: none;
-    z-index: 0;
-}
-
-.profile-card.fifa-card::after {
-    content: '';
-    position: absolute;
-    top: -50%; left: -50%;
-    width: 200%; height: 200%;
-    background: linear-gradient(45deg, transparent 40%, rgba(255, 215, 0, 0.03) 50%, transparent 60%);
-    animation: fifa-shine 4s ease-in-out infinite;
-    pointer-events: none;
-    z-index: 0;
-}
-
-@keyframes fifa-shine {
-    0%, 100% { transform: translateX(-100%) rotate(45deg); }
-    50% { transform: translateX(100%) rotate(45deg); }
-}
-
-@keyframes fifa-enter {
-    from { opacity: 0; transform: scale(0.85) translateY(30px); }
-    to { opacity: 1; transform: scale(1) translateY(0); }
-}
-
-.card-header {
-    display: flex;
-    align-items: flex-start;
-    gap: 1rem;
+/* === Radar Section === */
+.radar-section {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 16px;
+    padding: 1rem;
     margin-bottom: 1rem;
-    position: relative;
-    z-index: 1;
+    animation: radar-enter 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both;
 }
 
-.card-ovr {
-    font-size: 3.2rem;
-    font-weight: 900;
-    color: #FFD700;
-    line-height: 1;
-    text-shadow: 0 0 20px rgba(255, 215, 0, 0.5), 0 2px 4px rgba(0, 0, 0, 0.5);
-    min-width: 60px;
+@keyframes radar-enter {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
-.card-pos {
-    font-size: 1.1rem;
+.radar-container {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 0.75rem;
+}
+
+.radar-svg {
+    width: 200px;
+    height: 200px;
+}
+
+.radar-polygon {
+    transition: all 0.5s ease;
+}
+
+.radar-legend {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.4rem;
+}
+
+.radar-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0.3rem 0.2rem;
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 6px;
+    border: 1px solid rgba(255, 215, 0, 0.1);
+}
+
+.radar-code {
+    font-size: 0.6rem;
     font-weight: 800;
+    color: #FFD700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.radar-val {
+    font-size: 1.1rem;
+    font-weight: 900;
+    color: #f1f5f9;
+    line-height: 1;
+}
+
+.radar-name {
+    font-size: 0.55rem;
+    color: #64748b;
+    text-transform: uppercase;
+    margin-top: 0.1rem;
+}
+
+/* === OVR Section === */
+.ovr-section {
+    text-align: center;
+    margin-bottom: 1rem;
+    animation: ovr-enter 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.4s both;
+}
+
+@keyframes ovr-enter {
+    from { opacity: 0; transform: scale(0.9); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+.ovr-circle {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #FFD700, #FF6B00);
+    box-shadow: 0 0 30px rgba(255, 215, 0, 0.3), 0 4px 16px rgba(0, 0, 0, 0.3);
+    margin-bottom: 0.5rem;
+}
+
+.ovr-num {
+    font-size: 2.2rem;
+    font-weight: 900;
+    color: #0a0f1e;
+    line-height: 1;
+}
+
+.ovr-label {
+    font-size: 0.55rem;
+    font-weight: 800;
+    color: #0a0f1e;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+}
+
+.ovr-pos {
+    font-size: 0.9rem;
+    font-weight: 700;
     color: #FF6B00;
     text-transform: uppercase;
     letter-spacing: 0.1em;
-    margin-top: 0.2rem;
+    margin-bottom: 0.5rem;
 }
 
-.card-stats {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 0.5rem;
-    margin-bottom: 0.8rem;
-    position: relative;
-    z-index: 1;
-}
-
-.card-stat {
-    text-align: center;
-    padding: 0.5rem 0.2rem;
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 8px;
-    border: 1px solid rgba(255, 215, 0, 0.15);
-}
-
-.card-stat .stat-num {
-    display: block;
-    font-size: 1.5rem;
-    font-weight: 900;
-    color: #FFD700;
-    line-height: 1;
-}
-
-.card-stat .stat-lab {
-    display: block;
-    font-size: 0.6rem;
-    color: #94a3b8;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    margin-top: 0.2rem;
-}
-
-.card-extra {
+.ovr-extra {
     display: flex;
     justify-content: space-around;
     font-size: 0.75rem;
     color: #94a3b8;
-    padding-top: 0.6rem;
-    border-top: 1px solid rgba(255, 215, 0, 0.15);
-    position: relative;
-    z-index: 1;
 }
 
-.card-extra span {
+.ovr-extra span {
     font-weight: 600;
 }
 
@@ -250,6 +257,12 @@ body.fifa-page, body.profile-page {
     gap: 0.5rem;
     justify-content: center;
     margin-top: 1rem;
+    animation: actions-enter 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.5s both;
+}
+
+@keyframes actions-enter {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 .profile-actions .accion {
@@ -286,6 +299,12 @@ body.fifa-page, body.profile-page {
     background: rgba(255, 255, 255, 0.03);
     border-radius: 12px;
     border: 1px solid rgba(255, 255, 255, 0.06);
+    animation: contact-enter 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.6s both;
+}
+
+@keyframes contact-enter {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 .profile-contact li {
@@ -345,35 +364,34 @@ body.profile-page footer.pie {
 
 /* === Responsive === */
 @media (max-width: 480px) {
-    .fifa-card { padding: 1rem; }
-    .card-ovr { font-size: 2.5rem; }
-    .fifa-name { font-size: 1.4rem; }
-    .stat-val { font-size: 1.2rem; }
-    .card-stats { gap: 0.35rem; }
-    .hero-avatar { width: 100px; height: 100px; }
-    .hero-name { font-size: 1.5rem; }
+    .profile-container { max-width: 100%; padding: 0.5rem; }
+    .hero-avatar { width: 90px; height: 90px; }
+    .hero-name { font-size: 1.4rem; }
+    .radar-svg { width: 160px; height: 160px; }
+    .ovr-circle { width: 70px; height: 70px; }
+    .ovr-num { font-size: 1.8rem; }
     .profile-actions { flex-direction: column; }
     .profile-actions .accion { width: 100%; justify-content: center; }
+    .radar-legend { grid-template-columns: repeat(4, 1fr); gap: 0.3rem; }
+    .radar-val { font-size: 0.9rem; }
 }
 
 @media (min-width: 481px) and (max-width: 768px) {
-    .fifa-card { max-width: 400px; }
     .profile-container { max-width: 440px; }
+    .radar-svg { width: 180px; height: 180px; }
 }
 
 @media (min-width: 769px) {
-    .fifa-card { max-width: 420px; }
     .profile-container { max-width: 480px; }
+    .radar-svg { width: 200px; height: 200px; }
 }
 
 /* Hide old elements */
 body.profile-page .particulas { display: none; }
-body.profile-page main.tarjeta { display: none; }
 '''
 
-# Remove old fifa-card CSS and replace with new
-# Find the start of the old fifa CSS
-old_marker = "/* === FIFA-style stats card === */"
+# Remove old CSS and replace
+old_marker = "/* === FIFA Card - Complete Redesign === */"
 idx = content.find(old_marker)
 if idx >= 0:
     content = content[:idx] + css
@@ -384,5 +402,5 @@ with open(path, "w", encoding="utf-8") as f:
     f.write(content)
 print("Done")
 '@
-$script | Out-File -FilePath "C:\OpenCodeProyects\ECCSAWebApps\ECCSA_Colaboradores\panel\rewrite_css.py" -Encoding UTF8
-python "C:\OpenCodeProyects\ECCSAWebApps\ECCSA_Colaboradores\panel\rewrite_css.py"
+$script | Out-File -FilePath "C:\OpenCodeProyects\ECCSAWebApps\ECCSA_Colaboradores\panel\rewrite_css2.py" -Encoding UTF8
+python "C:\OpenCodeProyects\ECCSAWebApps\ECCSA_Colaboradores\panel\rewrite_css2.py"

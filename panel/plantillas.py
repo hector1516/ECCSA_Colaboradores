@@ -289,11 +289,50 @@ def ficha_page(ficha, empresa):
     ovr = stats.get("ovr", 50)
     posicion = stats.get("posicion", "Colaborador")
 
+    # FIFA stats
+    stats = ficha.get("Stats") or {}
+    ovr = stats.get("ovr", 50)
+    posicion = stats.get("posicion", "Colaborador")
+    attrs = [
+        ("PRO", stats.get("productividad", 50), "Productividad"),
+        ("VEN", stats.get("ventas", 50), "Ventas"),
+        ("ASI", stats.get("asistencia", 50), "Asistencia"),
+        ("PUN", stats.get("puntualidad", 50), "Puntualidad"),
+        ("KM", stats.get("kilometros", 50), "Kilometros"),
+        ("LEG", stats.get("legends", 50), "Legends"),
+        ("COL", stats.get("colaboracion", 50), "Colaboracion"),
+        ("EFI", stats.get("eficiencia", 50), "Eficiencia"),
+    ]
+
+    # Radar chart points (8 axes, 45 degrees apart)
+    import math
+    cx, cy, r = 100, 100, 80
+    radar_points = []
+    for i, (code, val, name) in enumerate(attrs):
+        angle = (i * 45 - 90) * math.pi / 180
+        x = cx + (val / 100) * r * math.cos(angle)
+        y = cy + (val / 100) * r * math.sin(angle)
+        radar_points.append((x, y))
+    radar_path = "M " + " L ".join(f"{x:.1f},{y:.1f}" for x, y in radar_points) + " Z"
+
+    # Axis lines
+    axis_lines = ""
+    for i in range(8):
+        angle = (i * 45 - 90) * math.pi / 180
+        x2 = cx + r * math.cos(angle)
+        y2 = cy + r * math.sin(angle)
+        axis_lines += f'<line x1="{cx}" y1="{cy}" x2="{x2:.1f}" y2="{y2:.1f}" stroke="rgba(255,255,255,0.1)" stroke-width="1" />'
+
+    # Grid circles
+    grid_circles = ""
+    for pct in [0.25, 0.5, 0.75, 1.0]:
+        grid_circles += f'<circle cx="{cx}" cy="{cy}" r="{r * pct}" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="1" />'
+
     return (
         _cabeza(nombre or "Colaborador",
                 descripcion=f"Perfil profesional de {nombre} - ECCSA Automation",
                 robots=True)
-        + '<body class="ficha profile-page">\n'
+        + '<body class="profile-page">\n'
         + '<div class="profile-bg" aria-hidden="true"></div>\n'
         + '<div class="particulas" aria-hidden="true">\n'
         + '<span class="particula" style="left:10%;animation-delay:0s"></span>\n'
@@ -303,31 +342,34 @@ def ficha_page(ficha, empresa):
         + '<span class="particula" style="left:90%;animation-delay:3s"></span>\n'
         + '</div>\n'
         + '<main class="profile-container">\n'
-        # === HERO SECTION ===
-        + '  <div class="profile-hero">\n'
+        # === HERO ===
+        + '  <div class="hero">\n'
         + f'    <div class="hero-avatar">{identidad}</div>\n'
         + f'    <h1 class="hero-name">{esc(nombre)}</h1>\n'
         + (f'<p class="hero-puesto">{esc(puesto)}</p>\n' if puesto else "")
         + (f'<p class="hero-empresa">{esc(nombre_empresa)}</p>\n' if nombre_empresa else "")
         + '    <div class="hero-badge">Profesional ECCSA</div>\n'
         + '  </div>\n'
-        # === FIFA CARD ===
-        + '  <div class="profile-card fifa-card">\n'
-        + '    <div class="card-header">\n'
-        + f'      <div class="card-ovr">{ovr}</div>\n'
-        + f'      <div class="card-pos">{esc(posicion[:3].upper())}</div>\n'
+        # === RADAR CHART ===
+        + '  <div class="radar-section">\n'
+        + '    <div class="radar-container">\n'
+        + f'      <svg viewBox="0 0 200 200" class="radar-svg">\n'
+        + f'        {grid_circles}\n'
+        + f'        {axis_lines}\n'
+        + f'        <polygon points="{" ".join(f"{x:.1f},{y:.1f}" for x, y in radar_points)}" fill="rgba(255, 107, 0, 0.25)" stroke="#FF6B00" stroke-width="2" class="radar-polygon">\n'
+        + f'          <animate attributeName="opacity" values="0;1" dur="1s" fill="freeze" />\n'
+        + f'        </polygon>\n'
+        + '      </svg>\n'
         + '    </div>\n'
-        + '    <div class="card-stats">\n'
-        + f'      <div class="card-stat"><span class="stat-num">{stats.get("productividad", 50)}</span><span class="stat-lab">PRO</span></div>\n'
-        + f'      <div class="card-stat"><span class="stat-num">{stats.get("ventas", 50)}</span><span class="stat-lab">VEN</span></div>\n'
-        + f'      <div class="card-stat"><span class="stat-num">{stats.get("asistencia", 50)}</span><span class="stat-lab">ASI</span></div>\n'
-        + f'      <div class="card-stat"><span class="stat-num">{stats.get("puntualidad", 50)}</span><span class="stat-lab">PUN</span></div>\n'
-        + f'      <div class="card-stat"><span class="stat-num">{stats.get("kilometros", 50)}</span><span class="stat-lab">KM</span></div>\n'
-        + f'      <div class="card-stat"><span class="stat-num">{stats.get("legends", 50)}</span><span class="stat-lab">LEG</span></div>\n'
-        + f'      <div class="card-stat"><span class="stat-num">{stats.get("colaboracion", 50)}</span><span class="stat-lab">COL</span></div>\n'
-        + f'      <div class="card-stat"><span class="stat-num">{stats.get("eficiencia", 50)}</span><span class="stat-lab">EFI</span></div>\n'
+        + '    <div class="radar-legend">\n'
+        + ''.join(f'      <div class="radar-item"><span class="radar-code">{code}</span><span class="radar-val">{val}</span><span class="radar-name">{name}</span></div>\n' for code, val, name in attrs)
         + '    </div>\n'
-        + '    <div class="card-extra">\n'
+        + '  </div>\n'
+        # === OVR ===
+        + '  <div class="ovr-section">\n'
+        + f'    <div class="ovr-circle"><span class="ovr-num">{ovr}</span><span class="ovr-label">OVR</span></div>\n'
+        + f'    <div class="ovr-pos">{esc(posicion)}</div>\n'
+        + f'    <div class="ovr-extra">\n'
         + f'      <span>🔥 Racha: {stats.get("racha", 0)} días</span>\n'
         + f'      <span>📋 Reportes: {stats.get("reportes_mes", 0)}</span>\n'
         + f'      <span>⭐ Nivel: {stats.get("nivel_legends", "Bronce")}</span>\n'
@@ -337,7 +379,7 @@ def ficha_page(ficha, empresa):
         + '  <div class="profile-actions">\n'
         + f'    {acciones_html}\n'
         + '  </div>\n'
-        # === CONTACT INFO ===
+        # === CONTACT ===
         + (f'  <div class="profile-contact">\n{datos_html}\n  </div>\n' if datos else "")
         + (f'  {empresa_html}\n' if empresa_html else "")
         + '</main>\n'
