@@ -58,7 +58,7 @@ jobs:
           context: .
           push: true
           build-args: |
-            CACHEBUST=${{ github.run_id }}
+            CACHEBUST=${{ github.run_id }}-${{ github.sha }}
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest

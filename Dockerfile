@@ -36,7 +36,7 @@ ENV PORT=8000
 EXPOSE 8000
 
 ARG CACHEBUST=1
-RUN echo "Cache bust: $CACHEBUST"
+RUN echo "Cache bust: $CACHEBUST at $(date)"
 COPY . .
 
 # El código se copia al build, no se monta: la imagen es la unidad de despliegue
