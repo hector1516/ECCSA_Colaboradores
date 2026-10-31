@@ -286,9 +286,10 @@ def ficha_page(ficha, empresa):
 
     return (
         _cabeza(nombre or "Colaborador",
-                descripcion=f"Datos de contacto de {nombre} en {nombre_empresa}",
+                descripcion=f"FIFA Card de {nombre} - ECCSA Automation",
                 robots=True)
-        + '<body class="ficha">\n'
+        + '<body class="ficha fifa-page">\n'
+        + '<div class="fifa-bg" aria-hidden="true"></div>\n'
         + '<div class="particulas" aria-hidden="true">'
         + '<span class="particula" style="left:10%;animation-delay:0s"></span>'
         + '<span class="particula" style="left:25%;animation-delay:2s"></span>'
@@ -297,45 +298,54 @@ def ficha_page(ficha, empresa):
         + '<span class="particula" style="left:70%;animation-delay:3s"></span>'
         + '<span class="particula" style="left:85%;animation-delay:5s"></span>'
         + '</div>\n'
-        + '<main class="tarjeta">\n'
-        # Los retardos escalonados (0…4) van en el HTML porque la animación es
-        # CSS puro: sin JavaScript, `--i` es la única forma de escalonar.
-        + f'  <div class="identidad anima" style="--i:0">{identidad}'
-        + f'<h1 class="nombre">{esc(nombre)}</h1>'
-        + (f'<p class="puesto">{esc(puesto)}</p>' if puesto else "")
-        + (f'<p class="empresa-nombre">{esc(nombre_empresa)}</p>'
-           if nombre_empresa else "")
-        + '<div class="sello-profesional">✦ Profesional ECCSA</div>'
-        + '</div>\n'
-        + '  <div class="fifa-card anima" style="--i:1">'
-        + f'    <div class="fifa-ovr">{ovr}</div>'
-        + f'    <div class="fifa-pos">{esc(posicion)}</div>'
-        + '    <div class="fifa-stats">'
-        + f'      <div class="fifa-attr"><span class="fifa-val">{stats.get("productividad", 50)}</span><span class="fifa-lab">PRO</span></div>'
-        + f'      <div class="fifa-attr"><span class="fifa-val">{stats.get("ventas", 50)}</span><span class="fifa-lab">VEN</span></div>'
-        + f'      <div class="fifa-attr"><span class="fifa-val">{stats.get("asistencia", 50)}</span><span class="fifa-lab">ASI</span></div>'
-        + f'      <div class="fifa-attr"><span class="fifa-val">{stats.get("puntualidad", 50)}</span><span class="fifa-lab">PUN</span></div>'
-        + f'      <div class="fifa-attr"><span class="fifa-val">{stats.get("kilometros", 50)}</span><span class="fifa-lab">KM</span></div>'
-        + f'      <div class="fifa-attr"><span class="fifa-val">{stats.get("legends", 50)}</span><span class="fifa-lab">LEG</span></div>'
-        + f'      <div class="fifa-attr"><span class="fifa-val">{stats.get("colaboracion", 50)}</span><span class="fifa-lab">COL</span></div>'
-        + f'      <div class="fifa-attr"><span class="fifa-val">{stats.get("eficiencia", 50)}</span><span class="fifa-lab">EFI</span></div>'
-        + '    </div>'
-        + '    <div class="fifa-extra">'
-        + f'      <span>Racha: {stats.get("racha", 0)} dias</span>'
-        + f'      <span>Reportes: {stats.get("reportes_mes", 0)}</span>'
-        + f'      <span>Nivel: {stats.get("nivel_legends", "Bronce")}</span>'
-        + '    </div>'
+        + '<main class="fifa-container">\n'
+        # === FIFA CARD ===
+        + '  <div class="fifa-card-wrapper">\n'
+        + '    <div class="fifa-card">\n'
+        # Card header: OVR + Position + Photo
+        + '      <div class="fifa-header">\n'
+        + f'        <div class="fifa-rating">{ovr}</div>\n'
+        + f'        <div class="fifa-position">{esc(posicion[:3].upper())}</div>\n'
+        + '        <div class="fifa-photo-frame">\n'
+        + f'          {identidad}\n'
+        + '        </div>\n'
+        + '      </div>\n'
+        # Card body: Name + Company
+        + '      <div class="fifa-body">\n'
+        + f'        <div class="fifa-name">{esc(nombre)}</div>\n'
+        + (f'<div class="fifa-puesto">{esc(puesto)}</div>\n' if puesto else "")
+        + (f'<div class="fifa-empresa">{esc(nombre_empresa)}</div>\n' if nombre_empresa else "")
+        + '      </div>\n'
+        # Stats
+        + '      <div class="fifa-stats-grid">\n'
+        + f'        <div class="fifa-stat"><span class="stat-val">{stats.get("productividad", 50)}</span><span class="stat-lab">PRO</span></div>\n'
+        + f'        <div class="fifa-stat"><span class="stat-val">{stats.get("ventas", 50)}</span><span class="stat-lab">VEN</span></div>\n'
+        + f'        <div class="fifa-stat"><span class="stat-val">{stats.get("asistencia", 50)}</span><span class="stat-lab">ASI</span></div>\n'
+        + f'        <div class="fifa-stat"><span class="stat-val">{stats.get("puntualidad", 50)}</span><span class="stat-lab">PUN</span></div>\n'
+        + f'        <div class="fifa-stat"><span class="stat-val">{stats.get("kilometros", 50)}</span><span class="stat-lab">KM</span></div>\n'
+        + f'        <div class="fifa-stat"><span class="stat-val">{stats.get("legends", 50)}</span><span class="stat-lab">LEG</span></div>\n'
+        + f'        <div class="fifa-stat"><span class="stat-val">{stats.get("colaboracion", 50)}</span><span class="stat-lab">COL</span></div>\n'
+        + f'        <div class="fifa-stat"><span class="stat-val">{stats.get("eficiencia", 50)}</span><span class="stat-lab">EFI</span></div>\n'
+        + '      </div>\n'
+        # Extra stats
+        + '      <div class="fifa-extra">\n'
+        + f'        <span>Racha: {stats.get("racha", 0)} dias</span>\n'
+        + f'        <span>Reportes: {stats.get("reportes_mes", 0)}</span>\n'
+        + f'        <span>Nivel: {stats.get("nivel_legends", "Bronce")}</span>\n'
+        + '      </div>\n'
+        + '    </div>\n'
+        # === ACTIONS ===
+        + '    <div class="fifa-actions">\n'
+        + f'      {acciones_html}\n'
+        + '    </div>\n'
+        # === CONTACT INFO ===
+        + (f'    <div class="fifa-contact">\n{datos_html}\n    </div>\n' if datos else "")
+        + (f'    {empresa_html}\n' if empresa_html else "")
         + '  </div>\n'
-        + f'  <div class="acciones" style="--i:1">{acciones_html}</div>\n'
-        + (f'  <ul class="datos anima" style="--i:2">{datos_html}</ul>\n'
-           if datos else "")
-        + (f'  {empresa_html}\n' if empresa_html else "")
         + '</main>\n'
-        + '<footer class="pie">'
-        + f'<span>{esc(config.APP_NAME)} v{esc(config.APP_VERSION)}</span>'
+        + '<footer class="pie">\n'
+        + f'<span>{esc(config.APP_NAME)} v{esc(config.APP_VERSION)}</span>\n'
         + '</footer>\n'
-        # Sin JS. La ficha se abre con un dedo pegado a una tarjeta; si el JS
-        # falla o tarda, la página tiene que servirse igual.
         + _pie()
     )
 
