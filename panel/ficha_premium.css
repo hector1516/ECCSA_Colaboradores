@@ -718,6 +718,103 @@ body.profile-page footer.pie {
     .particula { display: none; }
 }
 
+/* === Living portrait effect (vida) === */
+.hero-avatar .vida {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    overflow: hidden;
+    pointer-events: none;
+    z-index: 3;
+}
+.hero-avatar .vida::before {
+    content: "";
+    position: absolute;
+    top: -30%;
+    left: -60%;
+    width: 55%;
+    height: 160%;
+    background: linear-gradient(100deg,
+        transparent,
+        rgba(255, 224, 170, 0.06) 35%,
+        rgba(255, 246, 224, 0.42) 50%,
+        rgba(255, 224, 170, 0.06) 65%,
+        transparent);
+    filter: blur(6px);
+    transform: rotate(8deg);
+    animation: luz-viva 11s ease-in-out infinite;
+}
+@keyframes luz-viva {
+    0% { left: -60%; opacity: 0; }
+    12% { opacity: 0.9; }
+    45% { left: 120%; opacity: 0.8; }
+    58% { opacity: 0; }
+    100% { left: 120%; opacity: 0; }
+}
+.hero-avatar .vida::after {
+    content: "";
+    position: absolute;
+    inset: -10%;
+    background-image:
+        radial-gradient(circle, rgba(255, 196, 110, 0.9) 0 1.5px, transparent 1.8px),
+        radial-gradient(circle, rgba(255, 226, 170, 0.7) 0 1.1px, transparent 1.4px);
+    background-size: 130px 130px, 90px 90px;
+    background-position: 10px 120px, 60px 80px;
+    background-repeat: repeat;
+    opacity: 0;
+    animation: brasas 14s linear infinite;
+}
+@keyframes brasas {
+    0% { transform: translateY(22%) scale(1); opacity: 0; }
+    20% { opacity: 0.65; }
+    75% { opacity: 0.5; }
+    100% { transform: translateY(-22%) scale(1.04); opacity: 0; }
+}
+
+/* === Error pages (no_encontrado, error) === */
+body.ficha.error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 2rem;
+    background: var(--navy);
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    color: var(--text-primary);
+}
+body.ficha.error .tarjeta {
+    text-align: center;
+    max-width: 360px;
+    background: var(--glass);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--glass-border);
+    border-radius: 20px;
+    padding: 2rem;
+}
+body.ficha.error .marco-foto {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    margin: 0 auto 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    font-size: 2rem;
+    color: var(--text-muted);
+}
+body.ficha.error .nombre {
+    font-size: 1.2rem;
+    font-weight: 700;
+    margin: 0 0 0.5rem;
+}
+body.ficha.error .puesto {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+}
+
 /* === Print === */
 @media print {
     body.profile-page { background: white; color: black; }

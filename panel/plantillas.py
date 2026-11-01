@@ -15,7 +15,7 @@ from panel import config
 from panel.lugar import lugar_de_ip
 
 
-_CSS_FILES = ("shell.css", "ficha.css", "ficha_premium.css")
+_CSS_FILES = ("shell.css", "ficha_premium.css")
 
 
 def _leer_css():
