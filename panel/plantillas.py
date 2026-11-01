@@ -1,21 +1,19 @@
 """
-panel/plantillas.py — El HTML de la app (tema oscuro ECCSA)
+panel/plantillas.py — El HTML de la app (rediseño premium)
 ==========================================================
-HTML generado en Python, sin motor de plantillas: la app son dos pantallas
-(ficha pública y panel) y meter Jinja para eso sería una dependencia más que
-mantener. Los templates del shell (`banner.py.html`, `actions.py.html`) se
-respetan como contrato de markup y CSS, pero aquí el shell se pinta en el
-servidor, como hace el panel de WorkersAdmon.
+HTML generado en Python, sin motor de plantillas.
 
-CSS: `panel/shell.css` (canónico del shell, propagado por sync_shell.py, NO se
-edita a mano) + `panel/ficha.css` (lo propio de esta app).
+CSS: panel/shell.css (canónico) + panel/ficha.css + panel/ficha_premium.css
 """
+
 import html
 import os
 import urllib.parse
+import math
 
 from panel import config
 from panel.lugar import lugar_de_ip
+
 
 _CSS_FILES = ("shell.css", "ficha.css", "ficha_premium.css")
 
@@ -36,7 +34,7 @@ CSS = _leer_css()
 
 
 def esc(valor):
-    """Escapa para texto y para atributos. Todo dato de la BD pasa por aquí."""
+    """Escapa para texto y para atributos."""
     return html.escape(str(valor if valor is not None else ""), quote=True)
 
 
@@ -44,20 +42,10 @@ def esc(valor):
 # Helpers de enlace
 # ─────────────────────────────────────────────────────────────────────────────
 def solo_digitos(telefono):
-    """Deja el número pelado: '818 123 4567' → '8181234567'.
-
-    Es lo que exigen los enlaces de WhatsApp y los vCard: un espacio o un paréntesis
-    hace que wa.me devuelva 404 en el móvil.
-    """
     return "".join(c for c in (telefono or "") if c.isdigit())
 
 
 def url_whatsapp(numero, mensaje=None):
-    """Enlace wa.me, o '' si el número no sirve.
-
-    `wa.me` necesita el número con clave de país y sin '+'. Se pone 52 (México)
-    cuando el número no trae clave, porque ECCSA solo opera aquí.
-    """
     digitos = solo_digitos(numero)
     if not digitos:
         return ""
@@ -72,23 +60,6 @@ def url_whatsapp(numero, mensaje=None):
 
 
 def url_mapa(lat, lon, direccion, enlace_corto=""):
-    """Enlace para abrir el mapa, o '' si no hay nada con qué abrirlo.
-
-    Prioridad:
-      1. `colab_empresa_mapa_url` — el link corto de Google Maps. Es el mejor
-         porque abre la app NATIVA de mapas del móvil (Google Maps en Android,
-         Apple Maps en iOS si está instalada) y apunta al lugar EXACTO con su
-         ficha de negocio, no a una búsqueda por texto que puede caer en otro
-         punto de la calle.
-      2. Coordenadas → búsqueda de Google Maps.
-      3. Dirección → búsqueda de Google Maps por texto.
-
-    Antes se usaba `maps.apple.com`, que en Android manda a una página web
-    dentro del navegador en vez de a la app de mapas.
-
-    El link corto se deja tal cual, sin reescribirlo a `google.com/maps/search`:
-    perdería el redireccionado que decide qué app abre.
-    """
     if enlace_corto:
         return enlace_corto if enlace_corto.startswith("http") \
             else "https://" + enlace_corto
@@ -102,7 +73,6 @@ def url_mapa(lat, lon, direccion, enlace_corto=""):
 
 
 def url_instagram(usuario):
-    """Instagram acepta usuario o URL completa."""
     valor = (usuario or "").strip()
     if not valor:
         return ""
@@ -124,17 +94,8 @@ def url_facebook(usuario):
 # Chrome común
 # ─────────────────────────────────────────────────────────────────────────────
 def _cabeza(titulo, descripcion=None, robots=False):
-    """<head> con el CSS del shell inline.
-
-    El CSS va inline a propósito: la ficha se abre desde una tarjeta NFC, a
-    veces con datos móviles agotados. Un `<link>` externo a un CDN o a un
-    archivo aparte es una petición de más que puede fallar y dejar la página
-    sin estilos justo en el primer contacto con el cliente.
-    """
     meta_robots = ""
     if robots:
-        # La ficha no debe indexarse: no es un directorio público, son
-        # contactos individuales y no hay nada que un buscador deba listar.
         meta_robots = '<meta name="robots" content="noindex, nofollow">'
     desc = f'<meta name="description" content="{esc(descripcion)}">' if descripcion else ""
     return (
@@ -144,7 +105,7 @@ def _cabeza(titulo, descripcion=None, robots=False):
         '<meta name="viewport" content="width=device-width, initial-scale=1, '
         'viewport-fit=cover">\n'
         f"{meta_robots}\n{desc}\n"
-        '<meta name="theme-color" content="#0F172A">\n'
+        '<meta name="theme-color" content="#0c1222">\n'
         '<meta name="apple-mobile-web-app-capable" content="yes">\n'
         f"<title>{esc(titulo)}</title>\n"
         f"<style>\n{CSS}\n</style>\n"
@@ -160,7 +121,7 @@ def _pie(scripts=""):
 # Ficha pública  (GET /<slug>)
 # ─────────────────────────────────────────────────────────────────────────────
 def ficha_page(ficha, empresa):
-    """La tarjeta de presentación que ve quien toca la NFC."""
+    """Tarjeta de presentación premium — rediseño completo."""
     nombre = ficha.get("Nombre") or ""
     email = (ficha.get("Email") or "").strip()
     telefono = (ficha.get("Telefono") or "").strip()
@@ -171,8 +132,6 @@ def ficha_page(ficha, empresa):
     foto = ficha.get("Foto") or ""
     foto_tipo = ficha.get("FotoTipo") or "image/jpeg"
 
-    # El slug va en la URL de la foto del vCard y en el canonical; el token es
-    # un secreto y no debe filtrarse a un tercero por Referer.
     slug = ficha.get("Slug") or ""
 
     wa = url_whatsapp(empresa.get("colab_empresa_whatsapp") or telefono,
@@ -187,26 +146,12 @@ def ficha_page(ficha, empresa):
     tel_oficina = empresa.get("colab_empresa_telefono", "")
 
     # ── Identidad ──
-    # Markup idéntico al de AdmonApp (UsuarioDetalle.svelte): un contenedor
-    # circular con overflow:hidden y la foto dentro al 100% con object-fit:cover.
-    # El recorte al centro es lo que deja la cara bien colocada; esta app antes
-    # desplazaba el recorte al 28% "para acercar la cara" y quedaba descuadrada.
     if foto:
-        # Viene de HUB_UsuariosFotos reducida a 320x320 JPEG, como data-URI: la
-        # ficha es una sola página y así no hay una segunda petición por la
-        # imagen.
-        #
-        # `vida` es la capa del efecto "retrato vivo" (movimiento de cámara y
-        # luz en CSS puro, sin JS): va DENTRO del marco para heredar el recorte
-        # circular y solo se pinta cuando hay foto. Sin foto no existe, así que
-        # las iniciales se quedan quietas.
         identidad = (f'<div class="marco-foto">'
                      f'<img src="data:{esc(foto_tipo)};base64,{esc(foto)}" '
                      f'alt="Fotografía de {esc(nombre)}">'
                      f'<span class="vida" aria-hidden="true"></span></div>')
     else:
-        # Sin foto: iniciales. Es lo que evita que la tarjeta se vea rota si el
-        # usuario nunca subió su foto desde Admon.
         iniciales = "".join(p[0] for p in nombre.split()[:2]).upper() or "?"
         identidad = (f'<div class="marco-foto" aria-hidden="true">'
                      f'<span class="iniciales">{esc(iniciales)}</span></div>')
@@ -216,69 +161,106 @@ def ficha_page(ficha, empresa):
     if telefono:
         acciones.append(
             f'<a class="accion principal" href="tel:{esc(solo_digitos(telefono))}">'
-            f'<span classico>📞</span><span>Llamar</span></a>')
+            f'<span class="accion-icon">📞</span><span>Llamar</span></a>')
     if wa:
         acciones.append(
             f'<a class="accion" href="{esc(wa)}" target="_blank" rel="noopener">'
-            f'<span classico>💬</span><span>WhatsApp</span></a>')
-    # Guardar contacto: el vCard. `download` es lo que hace que iOS lo ofrezca
-    # para agregar en vez de abrirlo como texto.
+            f'<span class="accion-icon">💬</span><span>WhatsApp</span></a>')
     acciones.append(
         f'<a class="accion" href="/{esc(slug)}/contacto.vcf" download="{esc(nombre)}.vcf">'
-        f'<span classico>👤</span><span>Guardar contacto</span></a>')
+        f'<span class="accion-icon">👤</span><span>Guardar</span></a>')
     if mapa:
         acciones.append(
             f'<a class="accion" href="{esc(mapa)}" target="_blank" rel="noopener">'
-            f'<span classico>📍</span><span>Cómo llegar</span></a>')
-    # `--i` es el retardo escalonado de la animación de entrada (ver ficha.css).
-    # Sin esto todo saldría a la vez y se pierde el efecto de cascada.
+            f'<span class="accion-icon">📍</span><span>Cómo llegar</span></a>')
     for i, a in enumerate(acciones):
         acciones[i] = a.replace('<a class="accion',
                                 f'<a style="--i:{i}" class="accion')
     acciones_html = "\n".join(acciones)
 
     # ── Datos de contacto ──
-    datos = []
+    contact_items = []
     if email:
-        datos.append(
-            f'<li><span class="rot">✉️ Correo</span>'
-            f'<a class="val" href="mailto:{esc(email)}">{esc(email)}</a></li>')
+        contact_items.append(
+            f'<div class="contact-item">'
+            f'<div class="contact-icon">✉️</div>'
+            f'<div class="contact-info">'
+            f'<div class="contact-label">Correo</div>'
+            f'<a class="contact-value" href="mailto:{esc(email)}">{esc(email)}</a>'
+            f'</div></div>')
     if telefono:
-        datos.append(
-            f'<li><span class="rot">📱 Móvil</span>'
-            f'<a class="val" href="tel:{esc(solo_digitos(telefono))}">{esc(telefono)}</a></li>')
-    if direccion:
-        datos.append(f'<li><span class="rot">🏢 Dirección</span>'
-                     f'<span class="val">{esc(direccion)}</span></li>')
+        contact_items.append(
+            f'<div class="contact-item">'
+            f'<div class="contact-icon">📱</div>'
+            f'<div class="contact-info">'
+            f'<div class="contact-label">Móvil</div>'
+            f'<a class="contact-value" href="tel:{esc(solo_digitos(telefono))}">{esc(telefono)}</a>'
+            f'</div></div>')
     if tel_oficina:
-        datos.append(
-            f'<li><span class="rot">☎️ Oficina</span>'
-            f'<a class="val" href="tel:{esc(solo_digitos(tel_oficina))}">'
-            f'{esc(tel_oficina)}</a></li>')
-    datos_html = "\n".join(datos)
+        contact_items.append(
+            f'<div class="contact-item">'
+            f'<div class="contact-icon">☎️</div>'
+            f'<div class="contact-info">'
+            f'<div class="contact-label">Oficina</div>'
+            f'<a class="contact-value" href="tel:{esc(solo_digitos(tel_oficina))}">{esc(tel_oficina)}</a>'
+            f'</div></div>')
+    if direccion:
+        contact_items.append(
+            f'<div class="contact-item">'
+            f'<div class="contact-icon">🏢</div>'
+            f'<div class="contact-info">'
+            f'<div class="contact-label">Dirección</div>'
+            f'<span class="contact-value">{esc(direccion)}</span>'
+            f'</div></div>')
+    contact_html = "\n".join(contact_items)
 
-    # ── Redes ──
-    redes = []
-    if fb:
-        redes.append(f'<a style="--i:0" class="red" href="{esc(fb)}" '
-                     f'target="_blank" rel="noopener" aria-label="Facebook">f</a>')
-    if ig:
-        redes.append(f'<a style="--i:1" class="red ig" href="{esc(ig)}" '
-                     f'target="_blank" rel="noopener" aria-label="Instagram">ig</a>')
-    if sitio:
-        redes.append(f'<a style="--i:2" class="red web" href="{esc(sitio)}" '
-                     f'target="_blank" rel="noopener" aria-label="Sitio web">🌐</a>')
-    redes_html = ("\n".join(redes)
-                  if redes else '<span class="sin-redes">Sin redes configuradas</span>')
-
-    empresa_html = ""
-    puesto = (ficha.get("Puesto") or "").strip()
+    # ── Stats ──
     stats = ficha.get("Stats") or {}
     ovr = stats.get("ovr", 50)
     posicion = stats.get("posicion", "Colaborador")
     tier = stats.get("tier", "Bronce")
     anos_empresa = stats.get("anos_empresa", 0)
     experiencia = stats.get("experiencia", 0)
+
+    attrs = [
+        ("PRO", stats.get("productividad", 50), "Productividad"),
+        ("VEN", stats.get("ventas", 50), "Ventas"),
+        ("ASI", stats.get("asistencia", 50), "Asistencia"),
+        ("PUN", stats.get("puntualidad", 50), "Puntualidad"),
+        ("KM", stats.get("kilometros", 50), "Kilómetros"),
+        ("LEG", stats.get("legends", 50), "Legends"),
+        ("COL", stats.get("colaboracion", 50), "Colaboración"),
+        ("EFI", stats.get("eficiencia", 50), "Eficiencia"),
+    ]
+
+    # Stat bars HTML
+    stat_bars = ""
+    for code, val, name in attrs:
+        cls = "teal" if code in ("KM", "LEG", "COL") else ""
+        stat_bars += (
+            f'<div class="stat-bar">'
+            f'<div class="stat-bar-header">'
+            f'<span class="stat-bar-code">{code}</span>'
+            f'<span class="stat-bar-name">{name}</span>'
+            f'<span class="stat-bar-value">{val}</span>'
+            f'</div>'
+            f'<div class="stat-bar-track">'
+            f'<div class="stat-bar-fill {cls}" style="width:{val}%"></div>'
+            f'</div></div>\n'
+        )
+
+    # ── Empresa ──
+    redes = []
+    if fb:
+        redes.append(f'<a class="red" href="{esc(fb)}" target="_blank" rel="noopener" aria-label="Facebook">f</a>')
+    if ig:
+        redes.append(f'<a class="red" href="{esc(ig)}" target="_blank" rel="noopener" aria-label="Instagram">ig</a>')
+    if sitio:
+        redes.append(f'<a class="red" href="{esc(sitio)}" target="_blank" rel="noopener" aria-label="Sitio web">🌐</a>')
+    redes_html = "\n".join(redes) if redes else '<span style="color:var(--text-muted);font-size:0.75rem;">Sin redes</span>'
+
+    empresa_html = ""
+    puesto = (ficha.get("Puesto") or "").strip()
     if nombre_empresa or direccion or puesto:
         empresa_html = (
             f'<div class="empresa">'
@@ -287,49 +269,14 @@ def ficha_page(ficha, empresa):
             f'<div class="redes">{redes_html}</div>'
             f'</div>')
 
-    # FIFA stats
-    stats = ficha.get("Stats") or {}
-    ovr = stats.get("ovr", 50)
-    posicion = stats.get("posicion", "Colaborador")
-
-    # FIFA stats
-    stats = ficha.get("Stats") or {}
-    ovr = stats.get("ovr", 50)
-    posicion = stats.get("posicion", "Colaborador")
-    attrs = [
-        ("PRO", stats.get("productividad", 50), "Productividad"),
-        ("VEN", stats.get("ventas", 50), "Ventas"),
-        ("ASI", stats.get("asistencia", 50), "Asistencia"),
-        ("PUN", stats.get("puntualidad", 50), "Puntualidad"),
-        ("KM", stats.get("kilometros", 50), "Kilometros"),
-        ("LEG", stats.get("legends", 50), "Legends"),
-        ("COL", stats.get("colaboracion", 50), "Colaboracion"),
-        ("EFI", stats.get("eficiencia", 50), "Eficiencia"),
-    ]
-
-    # Radar chart points (8 axes, 45 degrees apart)
-    import math
-    cx, cy, r = 100, 100, 80
-    radar_points = []
-    for i, (code, val, name) in enumerate(attrs):
-        angle = (i * 45 - 90) * math.pi / 180
-        x = cx + (val / 100) * r * math.cos(angle)
-        y = cy + (val / 100) * r * math.sin(angle)
-        radar_points.append((x, y))
-    radar_path = "M " + " L ".join(f"{x:.1f},{y:.1f}" for x, y in radar_points) + " Z"
-
-    # Axis lines
-    axis_lines = ""
-    for i in range(8):
-        angle = (i * 45 - 90) * math.pi / 180
-        x2 = cx + r * math.cos(angle)
-        y2 = cy + r * math.sin(angle)
-        axis_lines += f'<line x1="{cx}" y1="{cy}" x2="{x2:.1f}" y2="{y2:.1f}" stroke="rgba(255,255,255,0.1)" stroke-width="1" />'
-
-    # Grid circles
-    grid_circles = ""
-    for pct in [0.25, 0.5, 0.75, 1.0]:
-        grid_circles += f'<circle cx="{cx}" cy="{cy}" r="{r * pct}" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="1" />'
+    # ── Hero experience ──
+    experience_html = ""
+    if anos_empresa > 0:
+        experience_html = (
+            f'<div class="hero-experience">'
+            f'<span class="exp-num">{anos_empresa}</span>'
+            f'<span>años en ECCSA</span>'
+            f'</div>')
 
     return (
         _cabeza(nombre or "Colaborador",
@@ -338,48 +285,36 @@ def ficha_page(ficha, empresa):
         + '<body class="profile-page">\n'
         + '<div class="profile-bg" aria-hidden="true"></div>\n'
         + '<div class="particulas" aria-hidden="true">\n'
-        + '<span class="particula" style="left:10%;animation-delay:0s"></span>\n'
-        + '<span class="particula" style="left:30%;animation-delay:2s"></span>\n'
-        + '<span class="particula" style="left:50%;animation-delay:4s"></span>\n'
-        + '<span class="particula" style="left:70%;animation-delay:1s"></span>\n'
-        + '<span class="particula" style="left:90%;animation-delay:3s"></span>\n'
+        + '<span class="particula"></span>\n'
+        + '<span class="particula"></span>\n'
+        + '<span class="particula"></span>\n'
+        + '<span class="particula"></span>\n'
+        + '<span class="particula"></span>\n'
         + '</div>\n'
         + '<main class="profile-container">\n'
         # === HERO ===
         + '  <div class="hero">\n'
-        + f'    <div class="hero-avatar">{identidad}</div>\n'
+        + f'    <div class="hero-avatar"><div class="ring"></div>{identidad}</div>\n'
         + f'    <h1 class="hero-name">{esc(nombre)}</h1>\n'
-        + (f'<p class="hero-puesto">{esc(puesto)}</p>\n' if puesto else "")
-        + f'<p class="hero-anos">{anos_empresa} a�os en ECCSA</p>\n'
-        + (f'<p class="hero-empresa">{esc(nombre_empresa)}</p>\n' if nombre_empresa else "")
-        + '    <div class="hero-badge">Profesional ECCSA</div>\n'
+        + (f'    <p class="hero-puesto">{esc(puesto)}</p>\n' if puesto else "")
+        + (f'    <p class="hero-empresa">{esc(nombre_empresa)}</p>\n' if nombre_empresa else "")
         + f'    <div class="hero-tier tier-{tier.lower()}">{tier}</div>\n'
+        + experience_html + '\n'
         + '  </div>\n'
-        # === RADAR CHART ===
-        + '  <div class="radar-section">\n'
-        + '    <div class="radar-container">\n'
-        + f'      <svg viewBox="0 0 200 200" class="radar-svg">\n'
-        + f'        {grid_circles}\n'
-        + f'        {axis_lines}\n'
-        + f'        <polygon points="{" ".join(f"{x:.1f},{y:.1f}" for x, y in radar_points)}" fill="rgba(0, 122, 255, 0.2)" stroke="#007AFF" stroke-width="2" class="radar-polygon">\n'
-        + f'          <animate attributeName="opacity" values="0;1" dur="1s" fill="freeze" />\n'
-        + f'        </polygon>\n'
-        + '      </svg>\n'
+        # === STATS ===
+        + '  <div class="stats-section">\n'
+        + '    <div class="stats-header">\n'
+        + '      <span class="stats-title">Estadísticas</span>\n'
+        + '      <div class="ovr-badge">\n'
+        + f'        <span class="ovr-number">{ovr}</span>\n'
+        + f'        <div><span class="ovr-label">OVR</span><br><span class="ovr-position">{esc(posicion)}</span></div>\n'
+        + '      </div>\n'
         + '    </div>\n'
-        + '    <div class="radar-legend">\n'
-        + ''.join(f'      <div class="radar-item"><span class="radar-code">{code}</span><span class="radar-val">{val}</span><span class="radar-name">{name}</span></div>\n' for code, val, name in attrs)
-        + '    </div>\n'
-        + '  </div>\n'
-        # === OVR ===
-        + '  <div class="ovr-section">\n'
-        + f'    <div class="ovr-circle"><span class="ovr-num">{ovr}</span><span class="ovr-label">OVR</span></div>\n'
-        + f'    <div class="ovr-pos">{esc(posicion)}</div>\n'
-        + f'    <div class="ovr-extra">\n'
-        + f'      <span>🔥 Racha: {stats.get("racha", 0)} días</span>\n'
-        + f'      <span>📋 Reportes: {stats.get("reportes_mes", 0)}</span>\n'
-        + f'      <span>⭐ Nivel: {stats.get("nivel_legends", "Bronce")}</span>\n'
-        + f'      <span>Experiencia: {experiencia}</span>\n'
-        + f'      <span>A�os: {anos_empresa}</span>\n'
+        + stat_bars
+        + '    <div class="extra-stats">\n'
+        + f'      <span>🔥 Racha: {stats.get("racha", 0)}d</span>\n'
+        + f'      <span>📋 {stats.get("reportes_mes", 0)} reportes</span>\n'
+        + f'      <span>⭐ {stats.get("nivel_legends", "Bronce")}</span>\n'
         + '    </div>\n'
         + '  </div>\n'
         # === ACTIONS ===
@@ -387,7 +322,7 @@ def ficha_page(ficha, empresa):
         + f'    {acciones_html}\n'
         + '  </div>\n'
         # === CONTACT ===
-        + (f'  <div class="profile-contact">\n{datos_html}\n  </div>\n' if datos else "")
+        + (f'  <div class="profile-contact">\n{contact_html}\n  </div>\n' if contact_html else "")
         + (f'  {empresa_html}\n' if empresa_html else "")
         + '</main>\n'
         + '<footer class="pie">\n'
@@ -398,12 +333,6 @@ def ficha_page(ficha, empresa):
 
 
 def no_encontrado_page():
-    """404.
-
-    Es la MISMA respuesta para un token que no existe y para uno dado de baja.
-    Distinguirlas confirmaría a quien escanea URLs que ese token existió, y por
-    ende que hubo una persona ahí.
-    """
     return (
         _cabeza("No encontrado", robots=True)
         + '<body class="ficha error">\n'
