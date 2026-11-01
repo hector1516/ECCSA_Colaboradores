@@ -101,19 +101,6 @@ def obtener_persona(id_usuario):
         conn = get_connection()
         cur = conn.cursor(as_dict=True)
 
-        # Años en la empresa
-        cur.execute("SELECT FechaIngreso FROM HUB_Users WHERE Id = %s", (id_usuario,))
-        row_ingreso = cur.fetchone()
-        fecha_ingreso = row_ingreso.get("FechaIngreso") if row_ingreso else None
-        if fecha_ingreso:
-            from datetime import date
-            hoy = date.today()
-            anos = hoy.year - fecha_ingreso.year
-            if (hoy.month, hoy.day) < (fecha_ingreso.month, fecha_ingreso.day):
-                anos -= 1
-            stats["anos_empresa"] = max(0, anos)
-        else:
-            stats["anos_empresa"] = 0
         cur.execute(FICHA_SQL, (id_usuario,))
         return cur.fetchone()
     except Exception as exc:
@@ -144,6 +131,20 @@ def calcular_stats_usuario(id_usuario):
     try:
         conn = get_connection()
         cur = conn.cursor(as_dict=True)
+
+        # Años en la empresa (determinante para el nivel)
+        cur.execute("SELECT FechaIngreso FROM HUB_Users WHERE Id = %s", (id_usuario,))
+        row_ingreso = cur.fetchone()
+        fecha_ingreso = row_ingreso.get("FechaIngreso") if row_ingreso else None
+        if fecha_ingreso:
+            from datetime import date
+            hoy = date.today()
+            anos = hoy.year - fecha_ingreso.year
+            if (hoy.month, hoy.day) < (fecha_ingreso.month, fecha_ingreso.day):
+                anos -= 1
+            stats["anos_empresa"] = max(0, anos)
+        else:
+            stats["anos_empresa"] = 0
 
         # Reportes firmados (ultimos 30 dias)
         cur.execute("""
