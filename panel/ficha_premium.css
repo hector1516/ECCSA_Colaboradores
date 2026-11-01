@@ -109,6 +109,39 @@ body.profile-page {
     margin: 0 0 0.5rem;
 }
 
+.hero-anos {
+    font-size: 0.75rem;
+    color: var(--sys-label-tertiary);
+    margin-top: 0.25rem;
+    font-weight: 500;
+}
+
+.hero-tier {
+    display: inline-block;
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 0.2rem 0.5rem;
+    border-radius: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-top: 0.35rem;
+}
+
+.hero-tier.tier-oro {
+    background: linear-gradient(135deg, #FFD700, #FFA500);
+    color: #000;
+}
+
+.hero-tier.tier-plata {
+    background: linear-gradient(135deg, #C0C0C0, #A0A0A0);
+    color: #000;
+}
+
+.hero-tier.tier-bronce {
+    background: linear-gradient(135deg, #CD7F32, #A0522D);
+    color: #fff;
+}
+
 .hero-badge {
     display: inline-block;
     background: linear-gradient(135deg, #007AFF, #0066DD);

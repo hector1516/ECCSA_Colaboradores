@@ -276,6 +276,9 @@ def ficha_page(ficha, empresa):
     stats = ficha.get("Stats") or {}
     ovr = stats.get("ovr", 50)
     posicion = stats.get("posicion", "Colaborador")
+    tier = stats.get("tier", "Bronce")
+    anos_empresa = stats.get("anos_empresa", 0)
+    experiencia = stats.get("experiencia", 0)
     if nombre_empresa or direccion or puesto:
         empresa_html = (
             f'<div class="empresa">'
@@ -347,8 +350,10 @@ def ficha_page(ficha, empresa):
         + f'    <div class="hero-avatar">{identidad}</div>\n'
         + f'    <h1 class="hero-name">{esc(nombre)}</h1>\n'
         + (f'<p class="hero-puesto">{esc(puesto)}</p>\n' if puesto else "")
+        + f'<p class="hero-anos">{anos_empresa} a�os en ECCSA</p>\n'
         + (f'<p class="hero-empresa">{esc(nombre_empresa)}</p>\n' if nombre_empresa else "")
         + '    <div class="hero-badge">Profesional ECCSA</div>\n'
+        + f'    <div class="hero-tier tier-{tier.lower()}">{tier}</div>\n'
         + '  </div>\n'
         # === RADAR CHART ===
         + '  <div class="radar-section">\n'
@@ -356,7 +361,7 @@ def ficha_page(ficha, empresa):
         + f'      <svg viewBox="0 0 200 200" class="radar-svg">\n'
         + f'        {grid_circles}\n'
         + f'        {axis_lines}\n'
-        + f'        <polygon points="{" ".join(f"{x:.1f},{y:.1f}" for x, y in radar_points)}" fill="rgba(255, 107, 0, 0.25)" stroke="#FF6B00" stroke-width="2" class="radar-polygon">\n'
+        + f'        <polygon points="{" ".join(f"{x:.1f},{y:.1f}" for x, y in radar_points)}" fill="rgba(0, 122, 255, 0.2)" stroke="#007AFF" stroke-width="2" class="radar-polygon">\n'
         + f'          <animate attributeName="opacity" values="0;1" dur="1s" fill="freeze" />\n'
         + f'        </polygon>\n'
         + '      </svg>\n'
@@ -373,6 +378,8 @@ def ficha_page(ficha, empresa):
         + f'      <span>🔥 Racha: {stats.get("racha", 0)} días</span>\n'
         + f'      <span>📋 Reportes: {stats.get("reportes_mes", 0)}</span>\n'
         + f'      <span>⭐ Nivel: {stats.get("nivel_legends", "Bronce")}</span>\n'
+        + f'      <span>Experiencia: {experiencia}</span>\n'
+        + f'      <span>A�os: {anos_empresa}</span>\n'
         + '    </div>\n'
         + '  </div>\n'
         # === ACTIONS ===

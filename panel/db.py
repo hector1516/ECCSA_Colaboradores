@@ -79,7 +79,8 @@ SELECT
           AND  m.Telefono IS NOT NULL
           AND  LTRIM(RTRIM(m.Telefono)) <> ''
         ORDER BY m.Telefono DESC
-    ) AS Telefono
+    ) AS Telefono,
+    u.FechaIngreso
 FROM   dbo.HUB_Users u
 WHERE  u.Id = %s
   AND  u.Activo = 1
@@ -99,6 +100,20 @@ def obtener_persona(id_usuario):
     try:
         conn = get_connection()
         cur = conn.cursor(as_dict=True)
+
+        # Años en la empresa
+        cur.execute("SELECT FechaIngreso FROM HUB_Users WHERE Id = %s", (id_usuario,))
+        row_ingreso = cur.fetchone()
+        fecha_ingreso = row_ingreso.get("FechaIngreso") if row_ingreso else None
+        if fecha_ingreso:
+            from datetime import date
+            hoy = date.today()
+            anos = hoy.year - fecha_ingreso.year
+            if (hoy.month, hoy.day) < (fecha_ingreso.month, fecha_ingreso.day):
+                anos -= 1
+            stats["anos_empresa"] = max(0, anos)
+        else:
+            stats["anos_empresa"] = 0
         cur.execute(FICHA_SQL, (id_usuario,))
         return cur.fetchone()
     except Exception as exc:
@@ -118,6 +133,7 @@ def calcular_stats_usuario(id_usuario):
         "ovr": 50,
         "productividad": 50, "ventas": 50, "asistencia": 50, "puntualidad": 50,
         "kilometros": 50, "legends": 50, "colaboracion": 50, "eficiencia": 50,
+        "anos_empresa": 0,
         "posicion": "Colaborador", "racha": 0, "mejor_racha": 0,
         "reportes_mes": 0, "cotizaciones_mes": 0, "km_mes": 0,
         "nivel_legends": "Bronce", "puntos_legends": 0,
@@ -207,22 +223,38 @@ def calcular_stats_usuario(id_usuario):
         avg_h = row["avg_h"] if row and row["avg_h"] else 5
         stats["eficiencia"] = min(99, max(10, int(100 - (avg_h * 5))))  # 5h = 75, 10h = 50
 
-        # OVR (promedio ponderado)
+        # Experiencia (años en ECCSA) - determinante para el nivel
+        anos = stats.get("anos_empresa", 0)
+        experiencia = min(99, anos * 6)  # 1 año = 6 pts, 15 años = 90 pts
+        stats["experiencia"] = experiencia
+
+        # OVR (promedio ponderado) - años en empresa es determinante
         stats["ovr"] = round(
-            stats["productividad"] * 0.20 +
-            stats["ventas"] * 0.15 +
-            stats["asistencia"] * 0.15 +
-            stats["puntualidad"] * 0.10 +
-            stats["kilometros"] * 0.10 +
-            stats["legends"] * 0.15 +
+            stats["productividad"] * 0.15 +
+            stats["ventas"] * 0.10 +
+            stats["asistencia"] * 0.10 +
+            stats["puntualidad"] * 0.05 +
+            stats["kilometros"] * 0.05 +
+            stats["legends"] * 0.10 +
             stats["colaboracion"] * 0.05 +
-            stats["eficiencia"] * 0.10
+            stats["eficiencia"] * 0.10 +
+            experiencia * 0.30
         )
+
+        # Determinar nivel (oro/plata/bronce) basado en años y OVR
+        if anos >= 10 or stats["ovr"] >= 80:
+            stats["tier"] = "Oro"
+        elif anos >= 5 or stats["ovr"] >= 60:
+            stats["tier"] = "Plata"
+        else:
+            stats["tier"] = "Bronce"
 
         # Posicion
         max_attr = max(stats["productividad"], stats["ventas"], stats["asistencia"],
-                       stats["legends"], stats["colaboracion"])
-        if stats["productividad"] == max_attr:
+                       stats["legends"], stats["colaboracion"], stats["experiencia"])
+        if stats["experiencia"] == max_attr and stats["anos_empresa"] >= 10:
+            stats["posicion"] = "Veterano"
+        elif stats["productividad"] == max_attr:
             stats["posicion"] = "Tecnico"
         elif stats["ventas"] == max_attr:
             stats["posicion"] = "Comercial"
