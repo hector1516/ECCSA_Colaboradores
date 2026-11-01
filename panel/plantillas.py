@@ -107,6 +107,9 @@ def _cabeza(titulo, descripcion=None, robots=False):
         f"{meta_robots}\n{desc}\n"
         '<meta name="theme-color" content="#0c1222">\n'
         '<meta name="apple-mobile-web-app-capable" content="yes">\n'
+        '<link rel="preconnect" href="https://fonts.googleapis.com">\n'
+        '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>\n'
+        '<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">\n'
         f"<title>{esc(titulo)}</title>\n"
         f"<style>\n{CSS}\n</style>\n"
         "</head>\n"

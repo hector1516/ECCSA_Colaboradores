@@ -7,8 +7,6 @@
    Estilo: Glassmorphism premium + animaciones sutiles
 */
 
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
-
 /* === Root === */
 :root {
     --gold: #f59e0b;
@@ -657,6 +655,23 @@ body.profile-page footer.pie {
 }
 
 /* === Responsive === */
+@media (max-width: 360px) {
+    .profile-container { max-width: 100%; padding: 0; }
+    .hero { padding: 1.5rem 1rem 1rem; border-radius: 16px; }
+    .hero-avatar { width: 80px; height: 80px; }
+    .hero-name { font-size: 1.15rem; }
+    .hero-puesto { font-size: 0.75rem; }
+    .stats-section { padding: 1rem; border-radius: 16px; }
+    .stat-bar-value { font-size: 0.75rem; }
+    .profile-actions { grid-template-columns: repeat(2, 1fr); gap: 0.4rem; }
+    .profile-actions .accion { padding: 0.6rem 0.3rem; font-size: 0.7rem; }
+    .profile-actions .accion-icon { font-size: 1.1rem; }
+    .profile-contact { padding: 1rem; border-radius: 16px; }
+    .contact-item { padding: 0.4rem 0; }
+    .empresa { padding: 1rem; border-radius: 16px; }
+    .ovr-number { font-size: 1.6rem; }
+}
+
 @media (max-width: 480px) {
     .profile-container { max-width: 100%; }
     .hero { padding: 2rem 1.25rem 1.25rem; }
@@ -664,14 +679,34 @@ body.profile-page footer.pie {
     .hero-name { font-size: 1.3rem; }
     .stats-section { padding: 1.25rem; }
     .profile-actions { grid-template-columns: repeat(2, 1fr); }
+    .contact-value { font-size: 0.8rem; }
 }
 
 @media (min-width: 481px) and (max-width: 768px) {
     .profile-container { max-width: 420px; }
+    .hero { padding: 2.5rem 2rem 1.5rem; }
 }
 
 @media (min-width: 769px) {
     .profile-container { max-width: 440px; }
+    body.profile-page {
+        padding: 2rem;
+    }
+}
+
+/* Landscape mobile */
+@media (max-height: 500px) and (orientation: landscape) {
+    body.profile-page {
+        align-items: flex-start;
+        padding-top: 0.5rem;
+    }
+    .profile-container { max-width: 90vw; }
+    .hero { padding: 1rem; }
+    .hero-avatar { width: 60px; height: 60px; }
+    .hero-name { font-size: 1rem; }
+    .stats-section { padding: 0.75rem; }
+    .stat-bar { margin-bottom: 0.4rem; }
+    .profile-actions { grid-template-columns: repeat(4, 1fr); }
 }
 
 /* === Reduced Motion === */
