@@ -327,6 +327,8 @@ def ficha_page(ficha, empresa):
         + '</main>\n'
         + '<footer class="pie">\n'
         + f'<span>{esc(config.APP_NAME)} v{esc(config.APP_VERSION)}</span>\n'
+        + '<span class="pie-sep"> · </span>\n'
+        + '<span>Colaboradores v0.5.1</span>\n'
         + '</footer>\n'
         + _pie()
     )
