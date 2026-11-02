@@ -333,7 +333,7 @@ class Handler(BaseHTTPRequestHandler):
                 200, vcf.encode("utf-8"),
                 'text/vcard; charset=utf-8',
                 extra=[("Content-Disposition",
-                        f'attachment; filename="contacto.vcf"')])
+                        f'inline; filename="contacto.vcf"')])
 
         return self._enviar(404, _error_page())
 

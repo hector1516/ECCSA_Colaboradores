@@ -170,7 +170,7 @@ def ficha_page(ficha, empresa):
             f'<a class="accion" href="{esc(wa)}" target="_blank" rel="noopener">'
             f'<span class="accion-icon">💬</span><span>WhatsApp</span></a>')
     acciones.append(
-        f'<a class="accion" href="/{esc(slug)}/contacto.vcf" download="{esc(nombre)}.vcf">'
+        f'<a class="accion" href="/{esc(slug)}/contacto.vcf" target="_blank" rel="noopener">'
         f'<span class="accion-icon">👤</span><span>Guardar</span></a>')
     if mapa:
         acciones.append(
