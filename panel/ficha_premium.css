@@ -360,8 +360,8 @@ body.profile-page {
 }
 
 .radar-svg {
-    width: 240px;
-    height: 240px;
+    width: 260px;
+    height: 260px;
     filter: drop-shadow(0 0 20px rgba(245, 158, 11, 0.15));
 }
 
@@ -394,10 +394,11 @@ body.profile-page {
 
 .radar-label {
     font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
-    font-size: 10px;
-    font-weight: 800;
-    fill: var(--gold);
-    letter-spacing: 0.05em;
+    font-size: 11px;
+    font-weight: 900;
+    fill: #fbbf24;
+    letter-spacing: 0.08em;
+    text-shadow: 0 0 6px rgba(245, 158, 11, 0.6);
     animation: label-fade 0.6s ease 0.8s both;
 }
 

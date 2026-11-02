@@ -238,7 +238,7 @@ def ficha_page(ficha, empresa):
 
     # Radar chart (beautiful, animated on load)
     import math
-    cx, cy, r = 120, 120, 90
+    cx, cy, r = 130, 130, 95
     n = len(attrs)
     radar_points = []
     for i, (code, val, name) in enumerate(attrs):
@@ -270,8 +270,8 @@ def ficha_page(ficha, empresa):
     labels = ""
     for i, (code, val, name) in enumerate(attrs):
         angle = (i * (360 / n) - 90) * math.pi / 180
-        lx = cx + (r + 22) * math.cos(angle)
-        ly = cy + (r + 22) * math.sin(angle)
+        lx = cx + (r + 28) * math.cos(angle)
+        ly = cy + (r + 28) * math.sin(angle)
         # Adjust text-anchor based on position
         if lx < cx - 5:
             anchor = "end"
@@ -287,7 +287,7 @@ def ficha_page(ficha, empresa):
     # Radar polygon (the data shape)
     poly_points = " ".join(f"{x:.1f},{y:.1f}" for x, y, c, v in radar_points)
     radar_svg = (
-        f'<svg viewBox="0 0 240 240" class="radar-svg" xmlns="http://www.w3.org/2000/svg">\n'
+        f'<svg viewBox="0 0 260 260" class="radar-svg" xmlns="http://www.w3.org/2000/svg">\n'
         f'  <defs>\n'
         f'    <radialGradient id="radarGradient" cx="50%" cy="50%" r="50%">\n'
         f'      <stop offset="0%" stop-color="rgba(245, 158, 11, 0.3)" />\n'
