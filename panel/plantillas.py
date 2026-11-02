@@ -328,9 +328,7 @@ def ficha_page(ficha, empresa):
         + (f'  <div class="profile-contact">\n{contact_html}\n  </div>\n' if contact_html else "")
         + (f'  {empresa_html}\n' if empresa_html else "")
         + '</main>\n'
-        + '<footer class="pie">\n'
-        + f'<span>{esc(config.APP_NAME)} v{esc(config.APP_VERSION)}</span>\n'
-        + '</footer>\n'
+        + ''
         + _pie()
     )
 
