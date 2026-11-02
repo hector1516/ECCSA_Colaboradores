@@ -236,21 +236,77 @@ def ficha_page(ficha, empresa):
         ("EFI", stats.get("eficiencia", 50), "Eficiencia"),
     ]
 
-    # Stat bars HTML
-    stat_bars = ""
-    for code, val, name in attrs:
-        cls = "teal" if code in ("KM", "LEG", "COL") else ""
-        stat_bars += (
-            f'<div class="stat-bar">'
-            f'<div class="stat-bar-header">'
-            f'<span class="stat-bar-code">{code}</span>'
-            f'<span class="stat-bar-name">{name}</span>'
-            f'<span class="stat-bar-value">{val}</span>'
-            f'</div>'
-            f'<div class="stat-bar-track">'
-            f'<div class="stat-bar-fill {cls}" style="width:{val}%"></div>'
-            f'</div></div>\n'
+    # Radar chart (beautiful, animated on load)
+    import math
+    cx, cy, r = 120, 120, 90
+    n = len(attrs)
+    radar_points = []
+    for i, (code, val, name) in enumerate(attrs):
+        angle = (i * (360 / n) - 90) * math.pi / 180
+        x = cx + (val / 100) * r * math.cos(angle)
+        y = cy + (val / 100) * r * math.sin(angle)
+        radar_points.append((x, y, code, val))
+
+    # Axis endpoints
+    axis_lines = ""
+    for i in range(n):
+        angle = (i * (360 / n) - 90) * math.pi / 180
+        x2 = cx + r * math.cos(angle)
+        y2 = cy + r * math.sin(angle)
+        axis_lines += f'<line x1="{cx}" y1="{cy}" x2="{x2:.1f}" y2="{y2:.1f}" class="radar-axis" />'
+
+    # Grid polygons (concentric)
+    grid_polygons = ""
+    for pct in [0.25, 0.5, 0.75, 1.0]:
+        pts = []
+        for i in range(n):
+            angle = (i * (360 / n) - 90) * math.pi / 180
+            x = cx + (r * pct) * math.cos(angle)
+            y = cy + (r * pct) * math.sin(angle)
+            pts.append(f"{x:.1f},{y:.1f}")
+        grid_polygons += f'<polygon points="{" ".join(pts)}" class="radar-grid" />'
+
+    # Labels (abbreviations only, positioned around chart)
+    labels = ""
+    for i, (code, val, name) in enumerate(attrs):
+        angle = (i * (360 / n) - 90) * math.pi / 180
+        lx = cx + (r + 22) * math.cos(angle)
+        ly = cy + (r + 22) * math.sin(angle)
+        # Adjust text-anchor based on position
+        if lx < cx - 5:
+            anchor = "end"
+        elif lx > cx + 5:
+            anchor = "start"
+        else:
+            anchor = "middle"
+        labels += (
+            f'<text x="{lx:.1f}" y="{ly:.1f}" class="radar-label" '
+            f'text-anchor="{anchor}" dominant-baseline="middle">{code}</text>'
         )
+
+    # Radar polygon (the data shape)
+    poly_points = " ".join(f"{x:.1f},{y:.1f}" for x, y, c, v in radar_points)
+    radar_svg = (
+        f'<svg viewBox="0 0 240 240" class="radar-svg" xmlns="http://www.w3.org/2000/svg">\n'
+        f'  <defs>\n'
+        f'    <radialGradient id="radarGradient" cx="50%" cy="50%" r="50%">\n'
+        f'      <stop offset="0%" stop-color="rgba(245, 158, 11, 0.3)" />\n'
+        f'      <stop offset="100%" stop-color="rgba(20, 184, 166, 0.1)" />\n'
+        f'    </radialGradient>\n'
+        f'    <filter id="glow">\n'
+        f'      <feGaussianBlur stdDeviation="3" result="coloredBlur" />\n'
+        f'      <feMerge>\n'
+        f'        <feMergeNode in="coloredBlur" />\n'
+        f'        <feMergeNode in="SourceGraphic" />\n'
+        f'      </feMerge>\n'
+        f'    </filter>\n'
+        f'  </defs>\n'
+        f'  {grid_polygons}\n'
+        f'  {axis_lines}\n'
+        f'  <polygon points="{poly_points}" class="radar-polygon" filter="url(#glow)" />\n'
+        f'  {labels}\n'
+        f'</svg>'
+    )
 
     # ── Empresa ──
     redes = []
@@ -313,7 +369,9 @@ def ficha_page(ficha, empresa):
         + f'        <div><span class="ovr-label">OVR</span><br><span class="ovr-position">{esc(posicion)}</span></div>\n'
         + '      </div>\n'
         + '    </div>\n'
-        + stat_bars
+        + '    <div class="radar-wrapper">\n'
+        + f'      {radar_svg}\n'
+        + '    </div>\n'
         + '    <div class="extra-stats">\n'
         + f'      <span>🔥 Racha: {stats.get("racha", 0)}d</span>\n'
         + f'      <span>📋 {stats.get("reportes_mes", 0)} reportes</span>\n'

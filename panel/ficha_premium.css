@@ -346,86 +346,64 @@ body.profile-page {
     letter-spacing: 0.08em;
 }
 
-/* Stat bars */
-.stat-bar {
-    margin-bottom: 0.75rem;
-    animation: bar-enter 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
-.stat-bar:nth-child(1) { animation-delay: 0.3s; }
-.stat-bar:nth-child(2) { animation-delay: 0.35s; }
-.stat-bar:nth-child(3) { animation-delay: 0.4s; }
-.stat-bar:nth-child(4) { animation-delay: 0.45s; }
-.stat-bar:nth-child(5) { animation-delay: 0.5s; }
-.stat-bar:nth-child(6) { animation-delay: 0.55s; }
-.stat-bar:nth-child(7) { animation-delay: 0.6s; }
-.stat-bar:nth-child(8) { animation-delay: 0.65s; }
-
-@keyframes bar-enter {
-    from { opacity: 0; transform: translateX(-20px); }
-    to { opacity: 1; transform: translateX(0); }
-}
-
-.stat-bar-header {
+/* === Radar Chart (beautiful, animated) === */
+.radar-wrapper {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 0.25rem;
+    justify-content: center;
+    margin: 0.5rem 0 1rem;
+    animation: radar-enter 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.3s both;
 }
 
-.stat-bar-code {
-    font-size: 0.65rem;
-    font-weight: 700;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    min-width: 32px;
+@keyframes radar-enter {
+    from { opacity: 0; transform: scale(0.8) rotate(-5deg); }
+    to { opacity: 1; transform: scale(1) rotate(0deg); }
 }
 
-.stat-bar-name {
-    font-size: 0.7rem;
-    color: var(--text-secondary);
-    flex: 1;
-    margin-left: 0.5rem;
+.radar-svg {
+    width: 240px;
+    height: 240px;
+    filter: drop-shadow(0 0 20px rgba(245, 158, 11, 0.15));
 }
 
-.stat-bar-value {
-    font-size: 0.85rem;
+.radar-grid {
+    fill: none;
+    stroke: rgba(255, 255, 255, 0.06);
+    stroke-width: 1;
+}
+
+.radar-axis {
+    stroke: rgba(255, 255, 255, 0.08);
+    stroke-width: 1;
+    stroke-dasharray: 2 4;
+}
+
+.radar-polygon {
+    fill: url(#radarGradient);
+    stroke: var(--gold);
+    stroke-width: 2;
+    stroke-linejoin: round;
+    filter: drop-shadow(0 0 8px rgba(245, 158, 11, 0.4));
+    animation: radar-draw 1.2s cubic-bezier(0.16, 1, 0.3, 1) 0.5s both;
+    transform-origin: center;
+}
+
+@keyframes radar-draw {
+    from { opacity: 0; transform: scale(0); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+.radar-label {
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    font-size: 10px;
     font-weight: 800;
-    color: var(--text-primary);
-    min-width: 28px;
-    text-align: right;
+    fill: var(--gold);
+    letter-spacing: 0.05em;
+    animation: label-fade 0.6s ease 0.8s both;
 }
 
-.stat-bar-track {
-    height: 6px;
-    background: rgba(255, 255, 255, 0.06);
-    border-radius: 999px;
-    overflow: hidden;
-    position: relative;
-}
-
-.stat-bar-fill {
-    height: 100%;
-    border-radius: 999px;
-    background: linear-gradient(90deg, var(--gold-dark), var(--gold));
-    transition: width 1s cubic-bezier(0.16, 1, 0.3, 1);
-    position: relative;
-}
-
-.stat-bar-fill::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    right: 0;
-    width: 20px;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3));
-    border-radius: 999px;
-}
-
-.stat-bar-fill.teal {
-    background: linear-gradient(90deg, var(--teal), var(--teal-light));
+@keyframes label-fade {
+    from { opacity: 0; }
+    to { opacity: 1; }
 }
 
 /* === Actions === */
