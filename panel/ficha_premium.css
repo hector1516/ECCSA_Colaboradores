@@ -1,191 +1,94 @@
-/* ficha_premium.css — Rediseño total: Premium Digital ID Card
-   Inspirado en: Impeccable (design language), UI UX Pro Max (design intelligence),
-   Taste Skill (anti-slop, premium frontend)
-   
-   Paleta: Deep Navy + Warm Gold + Teal
-   Tipografía: Plus Jakarta Sans (moderna, no genérica)
-   Estilo: Glassmorphism premium + animaciones sutiles
-*/
+/* ficha_premium.css — Rediseño Apple HIG: limpio, claro, accesible */
+/* Inspirado en Apple Human Interface Guidelines */
 
-/* === Root === */
+/* === Design Tokens (Apple system colors) === */
 :root {
-    --gold: #f59e0b;
-    --gold-light: #fbbf24;
-    --gold-dark: #d97706;
-    --teal: #14b8a6;
-    --teal-light: #2dd4bf;
-    --navy: #0c1222;
-    --navy-light: #1a2332;
-    --navy-mid: #111827;
-    --glass: rgba(255, 255, 255, 0.06);
-    --glass-border: rgba(255, 255, 255, 0.1);
-    --glass-hover: rgba(255, 255, 255, 0.1);
-    --text-primary: #f8fafc;
-    --text-secondary: #cbd5e1;
-    --text-muted: #64748b;
-    --text-accent: #f59e0b;
+    --apple-blue: #007AFF;
+    --apple-blue-dark: #0056CC;
+    --apple-green: #34C759;
+    --apple-orange: #FF9500;
+    --apple-red: #FF3B30;
+    --apple-gray: #8E8E93;
+    --apple-gray2: #AEAEB2;
+    --apple-gray3: #C7C7CC;
+    --apple-gray4: #D1D1D6;
+    --apple-gray5: #E5E5EA;
+    --apple-gray6: #F2F2F7;
+    --apple-label: #000000;
+    --apple-label2: #3C3C43;
+    --apple-label3: #3C3C4399;
+    --apple-bg: #F2F2F7;
+    --apple-surface: #FFFFFF;
+    --apple-separator: #C6C6C8;
+    --apple-shadow: rgba(0, 0, 0, 0.08);
+    --apple-shadow-md: rgba(0, 0, 0, 0.12);
 }
 
 /* === Body === */
 body.profile-page {
-    background: var(--navy);
+    background: var(--apple-bg);
     min-height: 100vh;
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 1rem;
     margin: 0;
-    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
-    color: var(--text-primary);
-    overflow-x: hidden;
-}
-
-/* Animated background mesh */
-.profile-bg {
-    position: fixed;
-    inset: 0;
-    background:
-        radial-gradient(ellipse 80% 50% at 20% 40%, rgba(245, 158, 11, 0.08) 0%, transparent 50%),
-        radial-gradient(ellipse 60% 40% at 80% 70%, rgba(20, 184, 166, 0.06) 0%, transparent 50%),
-        radial-gradient(ellipse 50% 60% at 50% 50%, rgba(12, 18, 34, 0.5) 0%, transparent 70%);
-    pointer-events: none;
-    z-index: 0;
-    animation: bg-drift 15s ease-in-out infinite alternate;
-}
-
-@keyframes bg-drift {
-    0% { transform: translate(0, 0) scale(1); }
-    50% { transform: translate(-2%, 2%) scale(1.05); }
-    100% { transform: translate(2%, -1%) scale(1); }
-}
-
-/* Floating particles - gold/teal */
-.particulas {
-    position: fixed;
-    inset: 0;
-    pointer-events: none;
-    z-index: 0;
-    overflow: hidden;
-}
-
-.particula {
-    position: absolute;
-    width: 4px;
-    height: 4px;
-    border-radius: 50%;
-    background: var(--gold);
-    opacity: 0;
-    animation: float-particle 8s ease-in-out infinite;
-}
-
-.particula:nth-child(1) { left: 15%; top: 80%; animation-delay: 0s; background: var(--gold); }
-.particula:nth-child(2) { left: 35%; top: 60%; animation-delay: 2s; background: var(--teal); }
-.particula:nth-child(3) { left: 55%; top: 90%; animation-delay: 4s; background: var(--gold-light); }
-.particula:nth-child(4) { left: 75%; top: 50%; animation-delay: 1s; background: var(--teal-light); }
-.particula:nth-child(5) { left: 90%; top: 75%; animation-delay: 3s; background: var(--gold); }
-
-@keyframes float-particle {
-    0% { opacity: 0; transform: translateY(0) scale(0); }
-    20% { opacity: 0.6; transform: translateY(-20px) scale(1); }
-    80% { opacity: 0.3; transform: translateY(-80px) scale(0.8); }
-    100% { opacity: 0; transform: translateY(-100px) scale(0); }
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro', 'SF Pro Text', system-ui, sans-serif;
+    color: var(--apple-label);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
 
 /* === Main Container === */
 .profile-container {
-    position: relative;
-    z-index: 1;
     width: 100%;
-    max-width: 400px;
+    max-width: 390px;
     margin: 0 auto;
 }
 
-/* === Hero Section - Full glass card === */
+/* === Hero Card === */
 .hero {
+    background: var(--apple-surface);
+    border-radius: 16px;
+    padding: 2rem 1.5rem 1.5rem;
     text-align: center;
-    padding: 2.5rem 1.5rem 1.5rem;
-    background: var(--glass);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid var(--glass-border);
-    border-radius: 24px;
     margin-bottom: 1rem;
-    animation: hero-enter 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
-    position: relative;
-    overflow: hidden;
-}
-
-.hero::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, var(--gold), transparent);
-    opacity: 0.6;
+    box-shadow: 0 1px 3px var(--apple-shadow), 0 4px 12px var(--apple-shadow-md);
+    animation: hero-enter 0.5s cubic-bezier(0.25, 0.1, 0.25, 1) both;
 }
 
 @keyframes hero-enter {
-    from { opacity: 0; transform: translateY(-30px) scale(0.95); }
-    to { opacity: 1; transform: translateY(0) scale(1); }
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
-/* Avatar with animated gradient ring */
+/* Avatar */
 .hero-avatar {
-    width: 120px;
-    height: 120px;
-    margin: 0 auto 1.25rem;
-    position: relative;
-    animation: avatar-float 6s ease-in-out infinite;
-}
-
-@keyframes avatar-float {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-6px); }
-}
-
-.hero-avatar .ring {
-    position: absolute;
-    inset: -4px;
+    width: 100px;
+    height: 100px;
+    margin: 0 auto 1rem;
     border-radius: 50%;
-    background: conic-gradient(from 0deg, var(--gold), var(--teal), var(--gold-light), var(--teal-light), var(--gold));
-    animation: ring-rotate 8s linear infinite;
-    z-index: 0;
+    overflow: hidden;
+    border: 2px solid var(--apple-gray5);
+    box-shadow: 0 2px 8px var(--apple-shadow);
+    transition: transform 0.2s ease;
 }
 
-.hero-avatar .ring::before {
-    content: '';
-    position: absolute;
-    inset: 3px;
-    border-radius: 50%;
-    background: var(--navy);
-    z-index: 1;
-}
-
-@keyframes ring-rotate {
-    to { transform: rotate(360deg); }
+.hero-avatar:hover {
+    transform: scale(1.03);
 }
 
 .hero-avatar .marco-foto {
-    position: relative;
-    z-index: 2;
     width: 100%;
     height: 100%;
     border-radius: 50%;
     overflow: hidden;
-    border: 2px solid rgba(255, 255, 255, 0.1);
 }
 
 .hero-avatar .marco-foto img {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.hero-avatar:hover .marco-foto img {
-    transform: scale(1.08);
 }
 
 .hero-avatar .iniciales {
@@ -194,108 +97,88 @@ body.profile-page {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(135deg, var(--navy-light), var(--navy-mid));
-    color: var(--gold);
-    font-size: 2.5rem;
-    font-weight: 800;
+    background: var(--apple-gray6);
+    color: var(--apple-blue);
+    font-size: 2.2rem;
+    font-weight: 700;
     letter-spacing: -0.02em;
 }
 
-/* Name with gradient */
+/* Name */
 .hero-name {
-    font-size: 1.5rem;
-    font-weight: 800;
-    background: linear-gradient(135deg, #f8fafc 0%, #fbbf24 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    margin: 0 0 0.25rem;
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: var(--apple-label);
+    margin: 0 0 0.15rem;
     letter-spacing: -0.02em;
     line-height: 1.2;
 }
 
 .hero-puesto {
-    font-size: 0.85rem;
-    color: var(--text-secondary);
-    margin: 0 0 0.15rem;
-    font-weight: 500;
+    font-size: 0.9rem;
+    color: var(--apple-label2);
+    margin: 0 0 0.1rem;
+    font-weight: 400;
 }
 
 .hero-empresa {
-    font-size: 0.75rem;
-    color: var(--gold);
-    font-weight: 600;
-    margin: 0 0 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-}
-
-/* Tier badge */
-.hero-tier {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.3rem;
-    font-size: 0.65rem;
-    font-weight: 700;
-    padding: 0.25rem 0.75rem;
-    border-radius: 999px;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    margin-top: 0.5rem;
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-}
-
-.hero-tier.tier-oro {
-    background: linear-gradient(135deg, rgba(245, 158, 11, 0.3), rgba(251, 191, 36, 0.2));
-    color: var(--gold-light);
-    border: 1px solid rgba(245, 158, 11, 0.4);
-    box-shadow: 0 0 20px rgba(245, 158, 11, 0.15);
-}
-
-.hero-tier.tier-plata {
-    background: linear-gradient(135deg, rgba(148, 163, 184, 0.3), rgba(203, 213, 225, 0.2));
-    color: #cbd5e1;
-    border: 1px solid rgba(148, 163, 184, 0.4);
-}
-
-.hero-tier.tier-bronce {
-    background: linear-gradient(135deg, rgba(180, 83, 9, 0.3), rgba(217, 119, 6, 0.2));
-    color: #fbbf24;
-    border: 1px solid rgba(180, 83, 9, 0.4);
-}
-
-/* Experience badge */
-.hero-experience {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    margin-top: 0.5rem;
-    font-size: 0.75rem;
-    color: var(--text-secondary);
+    font-size: 0.8rem;
+    color: var(--apple-blue);
     font-weight: 500;
+    margin: 0 0 0.5rem;
+}
+
+.hero-experience {
+    font-size: 0.8rem;
+    color: var(--apple-label3);
+    margin-top: 0.25rem;
+    font-weight: 400;
 }
 
 .hero-experience .exp-num {
-    color: var(--gold);
-    font-weight: 800;
-    font-size: 1rem;
+    color: var(--apple-blue);
+    font-weight: 600;
 }
 
-/* === Stats Section - Horizontal bars === */
-.stats-section {
-    background: var(--glass);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid var(--glass-border);
-    border-radius: 20px;
-    padding: 1.5rem;
+/* Tier badge - Apple style */
+.hero-tier {
+    display: inline-block;
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 0.2rem 0.7rem;
+    border-radius: 999px;
+    text-transform: none;
+    letter-spacing: 0;
+    margin-top: 0.5rem;
+}
+
+.hero-tier.tier-oro {
+    background: #FFF3CD;
+    color: #856404;
+}
+
+.hero-tier.tier-plata {
+    background: #E9ECEF;
+    color: #495057;
+}
+
+.hero-tier.tier-bronce {
+    background: #FDECEA;
+    color: #842029;
+}
+
+/* === Stats Card (Radar) === */
+.stats-card {
+    background: var(--apple-surface);
+    border-radius: 16px;
+    padding: 1.25rem;
     margin-bottom: 1rem;
-    animation: stats-enter 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both;
+    box-shadow: 0 1px 3px var(--apple-shadow), 0 4px 12px var(--apple-shadow-md);
+    animation: stats-enter 0.5s cubic-bezier(0.25, 0.1, 0.25, 1) 0.1s both;
 }
 
 @keyframes stats-enter {
-    from { opacity: 0; transform: translateY(20px); }
+    from { opacity: 0; transform: translateY(12px); }
     to { opacity: 1; transform: translateY(0); }
 }
 
@@ -303,15 +186,14 @@ body.profile-page {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 1.25rem;
+    margin-bottom: 0.75rem;
 }
 
 .stats-title {
-    font-size: 0.7rem;
-    font-weight: 700;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.15em;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--apple-label);
+    letter-spacing: -0.01em;
 }
 
 .ovr-badge {
@@ -321,85 +203,74 @@ body.profile-page {
 }
 
 .ovr-number {
-    font-size: 2rem;
-    font-weight: 900;
-    background: linear-gradient(135deg, var(--gold), var(--teal));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: var(--apple-blue);
     line-height: 1;
+    letter-spacing: -0.03em;
+}
+
+.ovr-info {
+    display: flex;
+    flex-direction: column;
 }
 
 .ovr-label {
     font-size: 0.6rem;
-    font-weight: 700;
-    color: var(--text-muted);
+    font-weight: 600;
+    color: var(--apple-gray);
     text-transform: uppercase;
-    letter-spacing: 0.1em;
+    letter-spacing: 0.05em;
 }
 
 .ovr-position {
-    font-size: 0.7rem;
-    color: var(--gold);
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
+    font-size: 0.75rem;
+    color: var(--apple-blue);
+    font-weight: 500;
 }
 
-/* === Radar Chart (beautiful, animated) === */
 .radar-wrapper {
     display: flex;
     justify-content: center;
-    margin: 0.5rem 0 1rem;
-    animation: radar-enter 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.3s both;
-}
-
-@keyframes radar-enter {
-    from { opacity: 0; transform: scale(0.8) rotate(-5deg); }
-    to { opacity: 1; transform: scale(1) rotate(0deg); }
+    margin: 0.5rem 0;
 }
 
 .radar-svg {
-    width: 260px;
-    height: 260px;
-    filter: drop-shadow(0 0 20px rgba(245, 158, 11, 0.15));
+    width: 220px;
+    height: 220px;
 }
 
 .radar-grid {
     fill: none;
-    stroke: rgba(255, 255, 255, 0.06);
+    stroke: var(--apple-gray5);
     stroke-width: 1;
 }
 
 .radar-axis {
-    stroke: rgba(255, 255, 255, 0.08);
+    stroke: var(--apple-gray4);
     stroke-width: 1;
-    stroke-dasharray: 2 4;
 }
 
 .radar-polygon {
-    fill: url(#radarGradient);
-    stroke: var(--gold);
+    fill: rgba(0, 122, 255, 0.12);
+    stroke: var(--apple-blue);
     stroke-width: 2;
     stroke-linejoin: round;
-    filter: drop-shadow(0 0 8px rgba(245, 158, 11, 0.4));
-    animation: radar-draw 1.2s cubic-bezier(0.16, 1, 0.3, 1) 0.5s both;
+    animation: radar-draw 0.8s cubic-bezier(0.25, 0.1, 0.25, 1) 0.3s both;
     transform-origin: center;
 }
 
 @keyframes radar-draw {
-    from { opacity: 0; transform: scale(0); }
+    from { opacity: 0; transform: scale(0.5); }
     to { opacity: 1; transform: scale(1); }
 }
 
 .radar-label {
-    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro', system-ui, sans-serif;
     font-size: 11px;
-    font-weight: 900;
-    fill: #fbbf24;
-    letter-spacing: 0.08em;
-    text-shadow: 0 0 6px rgba(245, 158, 11, 0.6);
-    animation: label-fade 0.6s ease 0.8s both;
+    font-weight: 600;
+    fill: var(--apple-blue);
+    animation: label-fade 0.4s ease 0.6s both;
 }
 
 @keyframes label-fade {
@@ -407,17 +278,33 @@ body.profile-page {
     to { opacity: 1; }
 }
 
-/* === Actions === */
+.extra-stats {
+    display: flex;
+    justify-content: center;
+    gap: 1.25rem;
+    margin-top: 0.75rem;
+    font-size: 0.75rem;
+    color: var(--apple-label3);
+    flex-wrap: wrap;
+}
+
+.extra-stats span {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+/* === Actions (Apple style buttons) === */
 .profile-actions {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-    gap: 0.6rem;
+    grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+    gap: 0.5rem;
     margin-bottom: 1rem;
-    animation: actions-enter 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.4s both;
+    animation: actions-enter 0.5s cubic-bezier(0.25, 0.1, 0.25, 1) 0.2s both;
 }
 
 @keyframes actions-enter {
-    from { opacity: 0; transform: translateY(10px); }
+    from { opacity: 0; transform: translateY(8px); }
     to { opacity: 1; transform: translateY(0); }
 }
 
@@ -425,74 +312,62 @@ body.profile-page {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 0.35rem;
-    padding: 0.85rem 0.5rem;
-    background: var(--glass);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid var(--glass-border);
-    border-radius: 16px;
-    color: var(--text-secondary);
+    gap: 0.3rem;
+    padding: 0.75rem 0.5rem;
+    min-height: 44px;
+    background: var(--apple-surface);
+    border: 1px solid var(--apple-gray5);
+    border-radius: 12px;
+    color: var(--apple-blue);
     font-size: 0.75rem;
-    font-weight: 600;
+    font-weight: 500;
     text-decoration: none;
-    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-    position: relative;
-    overflow: hidden;
-}
-
-.profile-actions .accion::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: radial-gradient(circle at 50% 50%, rgba(245, 158, 11, 0.1), transparent 70%);
-    opacity: 0;
-    transition: opacity 0.3s;
+    transition: all 0.15s ease;
+    -webkit-tap-highlight-color: transparent;
 }
 
 .profile-actions .accion:hover {
-    background: var(--glass-hover);
-    border-color: rgba(245, 158, 11, 0.3);
-    color: var(--gold-light);
-    transform: translateY(-3px);
+    background: var(--apple-gray6);
 }
 
-.profile-actions .accion:hover::before {
-    opacity: 1;
+.profile-actions .accion:active {
+    transform: scale(0.97);
+    background: var(--apple-gray5);
 }
 
 .profile-actions .accion.principal {
-    background: linear-gradient(135deg, var(--gold-dark), var(--gold));
-    border: none;
-    color: var(--navy);
-    font-weight: 700;
+    background: var(--apple-blue);
+    border-color: var(--apple-blue);
+    color: white;
+    font-weight: 600;
 }
 
 .profile-actions .accion.principal:hover {
-    background: linear-gradient(135deg, var(--gold), var(--gold-light));
-    box-shadow: 0 8px 24px rgba(245, 158, 11, 0.3);
-    color: var(--navy);
+    background: var(--apple-blue-dark);
+}
+
+.profile-actions .accion.principal:active {
+    transform: scale(0.97);
+    background: var(--apple-blue-dark);
 }
 
 .profile-actions .accion-icon {
-    font-size: 1.3rem;
+    font-size: 1.2rem;
     line-height: 1;
 }
 
-/* === Contact Info === */
+/* === Contact Card === */
 .profile-contact {
-    background: var(--glass);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid var(--glass-border);
-    border-radius: 20px;
-    padding: 1.25rem;
+    background: var(--apple-surface);
+    border-radius: 16px;
+    overflow: hidden;
     margin-bottom: 1rem;
-    animation: contact-enter 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.5s both;
+    box-shadow: 0 1px 3px var(--apple-shadow), 0 4px 12px var(--apple-shadow-md);
+    animation: contact-enter 0.5s cubic-bezier(0.25, 0.1, 0.25, 1) 0.3s both;
 }
 
 @keyframes contact-enter {
-    from { opacity: 0; transform: translateY(10px); }
+    from { opacity: 0; transform: translateY(8px); }
     to { opacity: 1; transform: translateY(0); }
 }
 
@@ -500,23 +375,30 @@ body.profile-page {
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    padding: 0.6rem 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-    transition: background 0.2s;
+    padding: 0.75rem 1rem;
+    border-bottom: 0.5px solid var(--apple-separator);
+    transition: background 0.15s;
+    min-height: 44px;
 }
 
-.contact-item:last-child { border-bottom: none; }
+.contact-item:last-child {
+    border-bottom: none;
+}
+
+.contact-item:hover {
+    background: var(--apple-gray6);
+}
 
 .contact-icon {
-    width: 36px;
-    height: 36px;
-    border-radius: 10px;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(245, 158, 11, 0.1);
-    color: var(--gold);
-    font-size: 1rem;
+    background: var(--apple-gray6);
+    color: var(--apple-blue);
+    font-size: 0.9rem;
     flex-shrink: 0;
 }
 
@@ -526,55 +408,50 @@ body.profile-page {
 }
 
 .contact-label {
-    font-size: 0.6rem;
-    font-weight: 700;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    margin-bottom: 0.1rem;
+    font-size: 0.7rem;
+    font-weight: 400;
+    color: var(--apple-gray);
+    margin-bottom: 0.05rem;
 }
 
 .contact-value {
-    font-size: 0.85rem;
-    color: var(--text-primary);
+    font-size: 0.9rem;
+    color: var(--apple-blue);
     text-decoration: none;
     overflow-wrap: anywhere;
-    font-weight: 500;
-    transition: color 0.2s;
+    font-weight: 400;
 }
 
 .contact-value:hover {
-    color: var(--gold-light);
+    text-decoration: underline;
 }
 
-/* === Company Section === */
+/* === Company Card === */
 .empresa {
-    background: var(--glass);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid var(--glass-border);
-    border-radius: 20px;
+    background: var(--apple-surface);
+    border-radius: 16px;
     padding: 1.25rem;
     text-align: center;
     margin-bottom: 1rem;
-    animation: empresa-enter 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.6s both;
+    box-shadow: 0 1px 3px var(--apple-shadow), 0 4px 12px var(--apple-shadow-md);
+    animation: empresa-enter 0.5s cubic-bezier(0.25, 0.1, 0.25, 1) 0.4s both;
 }
 
 @keyframes empresa-enter {
-    from { opacity: 0; transform: translateY(10px); }
+    from { opacity: 0; transform: translateY(8px); }
     to { opacity: 1; transform: translateY(0); }
 }
 
 .emp-nombre {
     font-size: 0.95rem;
-    font-weight: 700;
-    color: var(--text-primary);
+    font-weight: 600;
+    color: var(--apple-label);
     margin-bottom: 0.15rem;
 }
 
 .emp-dir {
-    font-size: 0.75rem;
-    color: var(--text-muted);
+    font-size: 0.8rem;
+    color: var(--apple-label3);
     margin-bottom: 0.75rem;
 }
 
@@ -587,219 +464,94 @@ body.profile-page {
 .red {
     width: 36px;
     height: 36px;
-    border-radius: 10px;
+    border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(255, 255, 255, 0.06);
-    color: var(--text-secondary);
+    background: var(--apple-gray6);
+    color: var(--apple-blue);
     text-decoration: none;
     font-size: 0.8rem;
-    font-weight: 600;
-    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-    border: 1px solid var(--glass-border);
+    font-weight: 500;
+    transition: all 0.15s ease;
+    min-height: 44px;
+    min-width: 44px;
 }
 
 .red:hover {
-    background: rgba(245, 158, 11, 0.15);
-    color: var(--gold);
-    border-color: rgba(245, 158, 11, 0.3);
-    transform: translateY(-2px);
+    background: var(--apple-gray5);
+}
+
+.red:active {
+    transform: scale(0.95);
+    background: var(--apple-gray4);
 }
 
 /* === Footer === */
 body.profile-page footer.pie {
     text-align: center;
-    margin-top: 1rem;
-    font-size: 0.65rem;
-    color: var(--text-muted);
-    letter-spacing: 0.05em;
-}
-
-/* === Extra Stats === */
-.extra-stats {
-    display: flex;
-    justify-content: center;
-    gap: 1rem;
-    margin-top: 0.75rem;
+    margin-top: 0.5rem;
     font-size: 0.7rem;
-    color: var(--text-muted);
-    flex-wrap: wrap;
-}
-
-.extra-stats span {
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
+    color: var(--apple-gray);
 }
 
 /* === Responsive === */
-@media (max-width: 360px) {
+@media (max-width: 390px) {
     .profile-container { max-width: 100%; padding: 0; }
-    .hero { padding: 1.5rem 1rem 1rem; border-radius: 16px; }
-    .hero-avatar { width: 80px; height: 80px; }
-    .hero-name { font-size: 1.15rem; }
-    .hero-puesto { font-size: 0.75rem; }
-    .stats-section { padding: 1rem; border-radius: 16px; }
-    .stat-bar-value { font-size: 0.75rem; }
-    .profile-actions { grid-template-columns: repeat(2, 1fr); gap: 0.4rem; }
-    .profile-actions .accion { padding: 0.6rem 0.3rem; font-size: 0.7rem; }
-    .profile-actions .accion-icon { font-size: 1.1rem; }
-    .profile-contact { padding: 1rem; border-radius: 16px; }
-    .contact-item { padding: 0.4rem 0; }
-    .empresa { padding: 1rem; border-radius: 16px; }
-    .ovr-number { font-size: 1.6rem; }
-}
-
-@media (max-width: 480px) {
-    .profile-container { max-width: 100%; }
-    .hero { padding: 2rem 1.25rem 1.25rem; }
-    .hero-avatar { width: 100px; height: 100px; }
-    .hero-name { font-size: 1.3rem; }
-    .stats-section { padding: 1.25rem; }
+    .hero { padding: 1.5rem 1.25rem 1.25rem; border-radius: 12px; }
+    .hero-avatar { width: 88px; height: 88px; }
+    .hero-name { font-size: 1.2rem; }
+    .stats-card { padding: 1rem; border-radius: 12px; }
     .profile-actions { grid-template-columns: repeat(2, 1fr); }
-    .contact-value { font-size: 0.8rem; }
+    .radar-svg { width: 180px; height: 180px; }
 }
 
-@media (min-width: 481px) and (max-width: 768px) {
-    .profile-container { max-width: 420px; }
-    .hero { padding: 2.5rem 2rem 1.5rem; }
+@media (min-width: 391px) and (max-width: 768px) {
+    .profile-container { max-width: 400px; }
 }
 
 @media (min-width: 769px) {
-    .profile-container { max-width: 440px; }
-    body.profile-page {
-        padding: 2rem;
-    }
+    .profile-container { max-width: 420px; }
+    body.profile-page { padding: 2rem; }
 }
 
-/* Landscape mobile */
-@media (max-height: 500px) and (orientation: landscape) {
-    body.profile-page {
-        align-items: flex-start;
-        padding-top: 0.5rem;
+/* === Dark Mode (Apple system) === */
+@media (prefers-color-scheme: dark) {
+    :root {
+        --apple-bg: #000000;
+        --apple-surface: #1C1C1E;
+        --apple-label: #FFFFFF;
+        --apple-label2: #EBEBF5;
+        --apple-label3: #EBEBF599;
+        --apple-gray: #8E8E93;
+        --apple-gray2: #636366;
+        --apple-gray3: #48484A;
+        --apple-gray4: #3A3A3C;
+        --apple-gray5: #2C2C2E;
+        --apple-gray6: #1C1C1E;
+        --apple-separator: #38383A;
+        --apple-shadow: rgba(0, 0, 0, 0.3);
+        --apple-shadow-md: rgba(0, 0, 0, 0.4);
     }
-    .profile-container { max-width: 90vw; }
-    .hero { padding: 1rem; }
-    .hero-avatar { width: 60px; height: 60px; }
-    .hero-name { font-size: 1rem; }
-    .stats-section { padding: 0.75rem; }
-    .stat-bar { margin-bottom: 0.4rem; }
-    .profile-actions { grid-template-columns: repeat(4, 1fr); }
+    .hero-avatar { border-color: var(--apple-gray4); }
+    .hero-tier.tier-oro { background: #3D3520; color: #FFD60A; }
+    .hero-tier.tier-plata { background: #2C2C2E; color: #AEAEB2; }
+    .hero-tier.tier-bronce { background: #3D2820; color: #FF9F0A; }
+    .contact-icon { background: var(--apple-gray5); }
+    .red { background: var(--apple-gray5); }
 }
 
 /* === Reduced Motion === */
 @media (prefers-reduced-motion: reduce) {
-    .profile-bg, .particula, .hero, .stats-section, .profile-actions,
-    .profile-contact, .empresa, .stat-bar, .hero-avatar, .ring {
+    .hero, .stats-card, .profile-actions, .profile-contact, .empresa,
+    .radar-polygon, .radar-label {
         animation: none !important;
+        opacity: 1 !important;
+        transform: none !important;
     }
-    .particula { display: none; }
 }
 
-/* === Living portrait effect (vida) === */
+/* === Living portrait effect (subtle, Apple style) === */
 .hero-avatar .vida {
-    position: absolute;
-    inset: 0;
-    border-radius: 50%;
-    overflow: hidden;
-    pointer-events: none;
-    z-index: 3;
-}
-.hero-avatar .vida::before {
-    content: "";
-    position: absolute;
-    top: -30%;
-    left: -60%;
-    width: 55%;
-    height: 160%;
-    background: linear-gradient(100deg,
-        transparent,
-        rgba(255, 224, 170, 0.06) 35%,
-        rgba(255, 246, 224, 0.42) 50%,
-        rgba(255, 224, 170, 0.06) 65%,
-        transparent);
-    filter: blur(6px);
-    transform: rotate(8deg);
-    animation: luz-viva 11s ease-in-out infinite;
-}
-@keyframes luz-viva {
-    0% { left: -60%; opacity: 0; }
-    12% { opacity: 0.9; }
-    45% { left: 120%; opacity: 0.8; }
-    58% { opacity: 0; }
-    100% { left: 120%; opacity: 0; }
-}
-.hero-avatar .vida::after {
-    content: "";
-    position: absolute;
-    inset: -10%;
-    background-image:
-        radial-gradient(circle, rgba(255, 196, 110, 0.9) 0 1.5px, transparent 1.8px),
-        radial-gradient(circle, rgba(255, 226, 170, 0.7) 0 1.1px, transparent 1.4px);
-    background-size: 130px 130px, 90px 90px;
-    background-position: 10px 120px, 60px 80px;
-    background-repeat: repeat;
-    opacity: 0;
-    animation: brasas 14s linear infinite;
-}
-@keyframes brasas {
-    0% { transform: translateY(22%) scale(1); opacity: 0; }
-    20% { opacity: 0.65; }
-    75% { opacity: 0.5; }
-    100% { transform: translateY(-22%) scale(1.04); opacity: 0; }
-}
-
-/* === Error pages (no_encontrado, error) === */
-body.ficha.error {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    min-height: 100vh;
-    padding: 2rem;
-    background: var(--navy);
-    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
-    color: var(--text-primary);
-}
-body.ficha.error .tarjeta {
-    text-align: center;
-    max-width: 360px;
-    background: var(--glass);
-    backdrop-filter: blur(20px);
-    border: 1px solid var(--glass-border);
-    border-radius: 20px;
-    padding: 2rem;
-}
-body.ficha.error .marco-foto {
-    width: 80px;
-    height: 80px;
-    border-radius: 50%;
-    margin: 0 auto 1rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--glass);
-    border: 1px solid var(--glass-border);
-    font-size: 2rem;
-    color: var(--text-muted);
-}
-body.ficha.error .nombre {
-    font-size: 1.2rem;
-    font-weight: 700;
-    margin: 0 0 0.5rem;
-}
-body.ficha.error .puesto {
-    color: var(--text-muted);
-    font-size: 0.85rem;
-}
-
-/* === Print === */
-@media print {
-    body.profile-page { background: white; color: black; }
-    .profile-bg, .particulas { display: none; }
-    .hero, .stats-section, .profile-actions, .profile-contact, .empresa {
-        background: transparent;
-        border: 1px solid #ccc;
-    }
+    display: none; /* Apple style: no animated effects on photos */
 }

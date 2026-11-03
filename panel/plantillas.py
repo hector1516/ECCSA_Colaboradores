@@ -153,7 +153,7 @@ def ficha_page(ficha, empresa):
         identidad = (f'<div class="marco-foto">'
                      f'<img src="data:{esc(foto_tipo)};base64,{esc(foto)}" '
                      f'alt="Fotografía de {esc(nombre)}">'
-                     f'<span class="vida" aria-hidden="true"></span></div>')
+                     f'</div>')
     else:
         iniciales = "".join(p[0] for p in nombre.split()[:2]).upper() or "?"
         identidad = (f'<div class="marco-foto" aria-hidden="true">'
@@ -361,19 +361,22 @@ def ficha_page(ficha, empresa):
         + experience_html + '\n'
         + '  </div>\n'
         # === STATS ===
-        + '  <div class="stats-section">\n'
+        + '  <div class="stats-card">\n'
         + '    <div class="stats-header">\n'
         + '      <span class="stats-title">Estadísticas</span>\n'
         + '      <div class="ovr-badge">\n'
         + f'        <span class="ovr-number">{ovr}</span>\n'
-        + f'        <div><span class="ovr-label">OVR</span><br><span class="ovr-position">{esc(posicion)}</span></div>\n'
+        + '        <div class="ovr-info">\n'
+        + '          <span class="ovr-label">OVR</span>\n'
+        + f'          <span class="ovr-position">{esc(posicion)}</span>\n'
+        + '        </div>\n'
         + '      </div>\n'
         + '    </div>\n'
         + '    <div class="radar-wrapper">\n'
         + f'      {radar_svg}\n'
         + '    </div>\n'
         + '    <div class="extra-stats">\n'
-        + f'      <span>🔥 Racha: {stats.get("racha", 0)}d</span>\n'
+        + f'      <span>🔥 {stats.get("racha", 0)}d racha</span>\n'
         + f'      <span>📋 {stats.get("reportes_mes", 0)} reportes</span>\n'
         + f'      <span>⭐ {stats.get("nivel_legends", "Bronce")}</span>\n'
         + '    </div>\n'
