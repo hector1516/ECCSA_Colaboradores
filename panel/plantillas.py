@@ -138,7 +138,7 @@ def ficha_page(ficha, empresa):
     slug = ficha.get("Slug") or ""
 
     wa = url_whatsapp(empresa.get("colab_empresa_whatsapp") or telefono,
-                      f"Hola, te escribo de parte de {nombre}.")
+                      f"Hola {nombre}, me gustaria contactarte.")
     mapa = url_mapa(lat, lon, direccion,
                     (empresa.get("colab_empresa_mapa_url") or "").strip())
     sitio = (empresa.get("colab_empresa_sitio") or "").strip()
